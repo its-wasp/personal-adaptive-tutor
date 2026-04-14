@@ -27,6 +27,9 @@ pip-wheel-metadata/
 docker/.env
 frontend/.env
 backend/.env
+# Keep .env.example committed so setup is reproducible
+!.env.example
+!**/.env.example
 
 # ===============================
 # Logs
