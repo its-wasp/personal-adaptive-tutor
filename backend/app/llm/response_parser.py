@@ -92,8 +92,38 @@ def _extract_json_with_unescaped_newlines(block: str) -> dict | None:
 
 
 def parse_explanation_response(raw_response: str) -> dict:
-    return _extract_json(raw_response)
+    """
+    Parse an initial-explanation response and enforce the contract:
+    both `title` and `explanation` must be present and non-empty.
+    Empty fields silently passed through in the past produced sessions
+    where the opening message was blank, so the model hallucinated
+    on the first real user turn.
+    """
+    result = _extract_json(raw_response)
+    title = (result.get("title") or "").strip()
+    explanation = (result.get("explanation") or "").strip()
+    if not title or not explanation:
+        raise ValueError(
+            f"Explanation response missing required fields (title/explanation): {result}"
+        )
+    result["title"] = title
+    result["explanation"] = explanation
+    return result
 
 
 def parse_quiz_response(raw_response: str) -> dict:
-    return _extract_json(raw_response)
+    """
+    Parse a quiz response and enforce the minimum contract: question,
+    options (dict of 4 choices), and correct_option. Missing fields
+    trigger a retry rather than a half-populated Quiz row.
+    """
+    result = _extract_json(raw_response)
+    question = (result.get("question") or "").strip()
+    options = result.get("options")
+    correct = result.get("correct_option")
+    if not question or not isinstance(options, dict) or len(options) < 2 or not correct:
+        raise ValueError(
+            f"Quiz response missing required fields (question/options/correct_option): {result}"
+        )
+    result["question"] = question
+    return result
