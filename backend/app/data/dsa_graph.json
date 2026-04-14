@@ -1,0 +1,244 @@
+{
+  "subject": "dsa",
+  "nodes": [
+    {
+      "name": "time_complexity",
+      "display_name": "Time Complexity & Big-O",
+      "description": "Understanding how to analyze algorithm efficiency using Big-O notation.",
+      "difficulty_tier": 1,
+      "estimated_minutes": 30,
+      "tags": ["fundamentals", "analysis"]
+    },
+    {
+      "name": "space_complexity",
+      "display_name": "Space Complexity",
+      "description": "Analyzing memory usage of algorithms and data structures.",
+      "difficulty_tier": 1,
+      "estimated_minutes": 20,
+      "tags": ["fundamentals", "analysis"]
+    },
+    {
+      "name": "arrays",
+      "display_name": "Arrays",
+      "description": "Contiguous memory storage, indexing, insertion, deletion, and traversal.",
+      "difficulty_tier": 1,
+      "estimated_minutes": 25,
+      "tags": ["linear", "fundamentals"]
+    },
+    {
+      "name": "strings",
+      "display_name": "Strings & String Manipulation",
+      "description": "String operations, pattern matching basics, and common string problems.",
+      "difficulty_tier": 1,
+      "estimated_minutes": 25,
+      "tags": ["linear", "fundamentals"]
+    },
+    {
+      "name": "linked_lists",
+      "display_name": "Linked Lists",
+      "description": "Singly and doubly linked lists — insertion, deletion, traversal, reversal.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 35,
+      "tags": ["linear", "pointers"]
+    },
+    {
+      "name": "stacks",
+      "display_name": "Stacks",
+      "description": "LIFO data structure — push, pop, peek. Applications in parsing and backtracking.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 25,
+      "tags": ["linear", "abstract"]
+    },
+    {
+      "name": "queues",
+      "display_name": "Queues",
+      "description": "FIFO data structure — enqueue, dequeue. Circular queues and priority queues.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 25,
+      "tags": ["linear", "abstract"]
+    },
+    {
+      "name": "hash_tables",
+      "display_name": "Hash Tables",
+      "description": "Hash functions, collision handling, and O(1) average-case lookups.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 35,
+      "tags": ["fundamentals", "hashing"]
+    },
+    {
+      "name": "recursion",
+      "display_name": "Recursion",
+      "description": "Recursive thinking, base cases, recursive vs iterative solutions, call stack.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 40,
+      "tags": ["fundamentals", "technique"]
+    },
+    {
+      "name": "sorting_basics",
+      "display_name": "Sorting Basics",
+      "description": "Why sorting matters, comparison-based sorting, stability, in-place vs out-of-place.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 20,
+      "tags": ["sorting", "fundamentals"]
+    },
+    {
+      "name": "bubble_sort",
+      "display_name": "Bubble Sort",
+      "description": "Simple O(n²) sorting by repeated adjacent swaps.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 15,
+      "tags": ["sorting"]
+    },
+    {
+      "name": "merge_sort",
+      "display_name": "Merge Sort",
+      "description": "Divide-and-conquer O(n log n) sorting algorithm.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 35,
+      "tags": ["sorting", "divide-and-conquer"]
+    },
+    {
+      "name": "quick_sort",
+      "display_name": "Quick Sort",
+      "description": "Partition-based O(n log n) average sorting. Pivot selection strategies.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 35,
+      "tags": ["sorting", "divide-and-conquer"]
+    },
+    {
+      "name": "linear_search",
+      "display_name": "Linear Search",
+      "description": "Sequential search through unsorted data. O(n) time.",
+      "difficulty_tier": 1,
+      "estimated_minutes": 10,
+      "tags": ["searching", "fundamentals"]
+    },
+    {
+      "name": "binary_search",
+      "display_name": "Binary Search",
+      "description": "Efficient O(log n) search on sorted data. Iterative and recursive approaches.",
+      "difficulty_tier": 2,
+      "estimated_minutes": 30,
+      "tags": ["searching", "divide-and-conquer"]
+    },
+    {
+      "name": "two_pointers",
+      "display_name": "Two Pointers Technique",
+      "description": "Using two pointers to solve array/string problems efficiently.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 30,
+      "tags": ["technique", "arrays"]
+    },
+    {
+      "name": "sliding_window",
+      "display_name": "Sliding Window",
+      "description": "Maintaining a window over sequential data for subarray/substring problems.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 35,
+      "tags": ["technique", "arrays"]
+    },
+    {
+      "name": "trees",
+      "display_name": "Trees & Binary Trees",
+      "description": "Tree terminology, binary trees, traversals (inorder, preorder, postorder, level-order).",
+      "difficulty_tier": 3,
+      "estimated_minutes": 40,
+      "tags": ["trees", "non-linear"]
+    },
+    {
+      "name": "binary_search_trees",
+      "display_name": "Binary Search Trees",
+      "description": "BST property, insert, delete, search. Balanced vs unbalanced.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 35,
+      "tags": ["trees", "searching"]
+    },
+    {
+      "name": "heaps",
+      "display_name": "Heaps & Priority Queues",
+      "description": "Min-heap, max-heap, heapify, extract-min/max. Priority queue applications.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 35,
+      "tags": ["trees", "abstract"]
+    },
+    {
+      "name": "graphs",
+      "display_name": "Graphs — Representation",
+      "description": "Graph terminology, adjacency list vs matrix, directed vs undirected, weighted graphs.",
+      "difficulty_tier": 3,
+      "estimated_minutes": 30,
+      "tags": ["graphs", "non-linear"]
+    },
+    {
+      "name": "bfs",
+      "display_name": "Breadth-First Search",
+      "description": "Level-order graph/tree traversal using a queue. Shortest path in unweighted graphs.",
+      "difficulty_tier": 4,
+      "estimated_minutes": 35,
+      "tags": ["graphs", "traversal"]
+    },
+    {
+      "name": "dfs",
+      "display_name": "Depth-First Search",
+      "description": "Stack-based graph/tree traversal. Applications in cycle detection, topological sort.",
+      "difficulty_tier": 4,
+      "estimated_minutes": 35,
+      "tags": ["graphs", "traversal"]
+    },
+    {
+      "name": "dynamic_programming",
+      "display_name": "Dynamic Programming",
+      "description": "Overlapping subproblems, optimal substructure, memoization vs tabulation.",
+      "difficulty_tier": 5,
+      "estimated_minutes": 60,
+      "tags": ["technique", "optimization"]
+    },
+    {
+      "name": "greedy_algorithms",
+      "display_name": "Greedy Algorithms",
+      "description": "Making locally optimal choices. When greedy works vs when it doesn't.",
+      "difficulty_tier": 4,
+      "estimated_minutes": 40,
+      "tags": ["technique", "optimization"]
+    }
+  ],
+  "edges": [
+    {"from": "time_complexity", "to": "arrays", "type": "PREREQUISITE"},
+    {"from": "time_complexity", "to": "sorting_basics", "type": "PREREQUISITE"},
+    {"from": "time_complexity", "to": "linear_search", "type": "PREREQUISITE"},
+    {"from": "space_complexity", "to": "arrays", "type": "RELATED"},
+    {"from": "arrays", "to": "strings", "type": "RELATED"},
+    {"from": "arrays", "to": "linked_lists", "type": "PREREQUISITE"},
+    {"from": "arrays", "to": "stacks", "type": "PREREQUISITE"},
+    {"from": "arrays", "to": "queues", "type": "PREREQUISITE"},
+    {"from": "arrays", "to": "hash_tables", "type": "PREREQUISITE"},
+    {"from": "arrays", "to": "binary_search", "type": "PREREQUISITE"},
+    {"from": "arrays", "to": "two_pointers", "type": "PREREQUISITE"},
+    {"from": "arrays", "to": "sliding_window", "type": "PREREQUISITE"},
+    {"from": "linked_lists", "to": "trees", "type": "PREREQUISITE"},
+    {"from": "stacks", "to": "dfs", "type": "RELATED"},
+    {"from": "queues", "to": "bfs", "type": "RELATED"},
+    {"from": "queues", "to": "heaps", "type": "PREREQUISITE"},
+    {"from": "recursion", "to": "merge_sort", "type": "PREREQUISITE"},
+    {"from": "recursion", "to": "quick_sort", "type": "PREREQUISITE"},
+    {"from": "recursion", "to": "trees", "type": "PREREQUISITE"},
+    {"from": "recursion", "to": "dfs", "type": "PREREQUISITE"},
+    {"from": "recursion", "to": "dynamic_programming", "type": "PREREQUISITE"},
+    {"from": "sorting_basics", "to": "bubble_sort", "type": "PREREQUISITE"},
+    {"from": "sorting_basics", "to": "merge_sort", "type": "PREREQUISITE"},
+    {"from": "sorting_basics", "to": "quick_sort", "type": "PREREQUISITE"},
+    {"from": "bubble_sort", "to": "merge_sort", "type": "EXTENDS"},
+    {"from": "linear_search", "to": "binary_search", "type": "EXTENDS"},
+    {"from": "binary_search", "to": "two_pointers", "type": "RELATED"},
+    {"from": "trees", "to": "binary_search_trees", "type": "EXTENDS"},
+    {"from": "trees", "to": "heaps", "type": "EXTENDS"},
+    {"from": "trees", "to": "graphs", "type": "PREREQUISITE"},
+    {"from": "binary_search_trees", "to": "graphs", "type": "RELATED"},
+    {"from": "graphs", "to": "bfs", "type": "PREREQUISITE"},
+    {"from": "graphs", "to": "dfs", "type": "PREREQUISITE"},
+    {"from": "graphs", "to": "greedy_algorithms", "type": "RELATED"},
+    {"from": "bfs", "to": "dynamic_programming", "type": "RELATED"},
+    {"from": "dfs", "to": "dynamic_programming", "type": "RELATED"},
+    {"from": "greedy_algorithms", "to": "dynamic_programming", "type": "RELATED"}
+  ]
+}
