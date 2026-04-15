@@ -1,0 +1,103 @@
+# ===============================
+# Python
+# ===============================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+.env.*
+.venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# ===============================
+# Environment Variables
+# ===============================
+.env
+docker/.env
+frontend/.env
+backend/.env
+
+# ===============================
+# Logs
+# ===============================
+*.log
+logs/
+*.out
+
+# ===============================
+# IDE / Editor
+# ===============================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===============================
+# Testing / Coverage
+# ===============================
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ===============================
+# Streamlit
+# ===============================
+.streamlit/secrets.toml
+
+# ===============================
+# Database
+# ===============================
+*.db
+*.sqlite3
+postgres-data/
+pgdata/
+
+# ===============================
+# Alembic
+# ===============================
+# Keep migration versions tracked!
+# Only ignore cache/compiled files
+backend/alembic/__pycache__/
+backend/app/db/migrations/__pycache__/
+
+# ===============================
+# Docker
+# ===============================
+docker-compose.override.yml
+*.pid
+*.seed
+
+# ===============================
+# OS Files
+# ===============================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ===============================
+# Temporary files
+# ===============================
+*.tmp
+*.bak
+*.orig
+
+# ===============================
+# Misc
+# ===============================
+*.env.local
+*.env.dev
+*.env.prod
