@@ -135,6 +135,7 @@ export default function Chat() {
         topic_name: session.topic_name,
         title: session.title,
         current_level: session.current_level,
+        concept_node_id: session.concept_node_id,
         created_at: new Date().toISOString(),
       },
       ...prev,
@@ -242,9 +243,20 @@ export default function Chat() {
           <>
             <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
               <div className="min-w-0">
-                <h1 className="truncate text-sm font-semibold text-slate-900">
-                  {activeSession?.title || activeSession?.topic_name || "Session"}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="truncate text-sm font-semibold text-slate-900">
+                    {activeSession?.title || activeSession?.topic_name || "Session"}
+                  </h1>
+                  {activeSession?.concept_node_id && (
+                    <span
+                      title="This session is linked to a concept on the knowledge graph — quiz results update your mastery."
+                      className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-indigo-700 ring-1 ring-indigo-200"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      Graph concept
+                    </span>
+                  )}
+                </div>
                 {activeSession && (
                   <p className="text-xs text-slate-500">
                     {activeSession.topic_name} · {activeSession.current_level}
