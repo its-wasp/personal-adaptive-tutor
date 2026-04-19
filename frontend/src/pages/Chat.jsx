@@ -39,6 +39,7 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const scrollRef = useRef(null);
   // When the user sends a message we pin THAT message at the top of the
@@ -236,13 +237,28 @@ export default function Chat() {
         activeId={sessionId}
         onNew={() => setShowNewModal(true)}
         onDeleted={handleDeleted}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="flex flex-1 flex-col">
         {sessionId ? (
           <>
             <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                {/* Hamburger — mobile only */}
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="rounded p-1 text-slate-500 hover:bg-slate-100 md:hidden"
+                  aria-label="Open sidebar"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </svg>
+                </button>
+                <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="truncate text-sm font-semibold text-slate-900">
                     {activeSession?.title || activeSession?.topic_name || "Session"}
@@ -262,6 +278,7 @@ export default function Chat() {
                     {activeSession.topic_name} · {activeSession.current_level}
                   </p>
                 )}
+                </div>
               </div>
               <button
                 onClick={handleGenerateQuiz}
@@ -307,6 +324,7 @@ export default function Chat() {
             loading={loadingSessions}
             hasSessions={sessions.length > 0}
             onNew={() => setShowNewModal(true)}
+            onOpenSidebar={() => setSidebarOpen(true)}
           />
         )}
       </main>
@@ -323,9 +341,21 @@ export default function Chat() {
   );
 }
 
-function EmptyState({ loading, hasSessions, onNew }) {
+function EmptyState({ loading, hasSessions, onNew, onOpenSidebar }) {
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
+    <div className="relative flex flex-1 items-center justify-center p-6">
+      {/* Hamburger for mobile when no session is selected */}
+      <button
+        onClick={onOpenSidebar}
+        className="absolute left-4 top-4 rounded p-1 text-slate-500 hover:bg-slate-100 md:hidden"
+        aria-label="Open sidebar"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
       <div className="max-w-sm text-center">
         {loading ? (
           <p className="text-sm text-slate-500">Loading your sessions…</p>
