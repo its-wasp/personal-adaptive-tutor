@@ -130,6 +130,7 @@ class QuizService:
 
         return {
             "correct": is_correct,
+            "correct_option": quiz.correct_option,
             "points_awarded": points,
             "explanation": quiz.explanation,
             "hint": None if is_correct else quiz.hint,

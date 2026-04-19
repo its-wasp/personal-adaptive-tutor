@@ -279,7 +279,10 @@ export default function Chat() {
                 <div className="mx-auto flex max-w-4xl flex-col gap-3">
                   {messages.map((m) => (
                     <div key={m.id} data-msg-id={m.id}>
-                      <MessageBubble message={m} />
+                      <MessageBubble
+                        message={m}
+                        onNextQuestion={handleGenerateQuiz}
+                      />
                     </div>
                   ))}
                   {sending && (
