@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.config import settings
 from app.db.session import engine
 
 from app.routers import (
@@ -16,10 +17,14 @@ from app.routers import knowledge_graph_router, profile_router, onboarding_route
 
 app = FastAPI(title="Adaptive Learning Platform V1", version="1.0.0")
 
-# CORS — allow frontend dev server
+# CORS — local dev + production origins from env
+origins = ["http://localhost:5173", "http://localhost:3000"]
+if settings.CORS_ORIGINS:
+    origins.extend([o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
