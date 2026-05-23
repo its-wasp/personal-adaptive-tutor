@@ -5,6 +5,7 @@ from app.models.chat_session import ChatSession, KnowledgeLevel
 from app.models.chat_message import ChatMessage, MessageRole, MessageType
 from app.llm.factory import get_llm_provider
 from app.llm.prompt_builder import build_explanation_prompt, build_system_prompt
+from app.llm.personalization_reasons import build_reasons
 from app.llm.response_parser import parse_explanation_response
 from app.services.learner_profile_service import LearnerProfileService
 from app.services.engagement_service import EngagementService
@@ -62,11 +63,17 @@ class ChatService:
         )
         session = self.repo.create_session(session)
 
+        # Snapshot the signals that shaped this message. We persist them
+        # (rather than recomputing at render time) because the profile
+        # evolves — older messages should reflect the profile they were
+        # actually generated with.
+        reasons = build_reasons(profile, retrieved)
         message = ChatMessage(
             chat_session_id=session.id,
             role=MessageRole.ASSISTANT,
             message_type=MessageType.EXPLANATION,
             content=parsed["explanation"],
+            metadata_json={"reasons": reasons} if reasons else None,
         )
         self.repo.create_message(message)
 
@@ -102,6 +109,12 @@ class ChatService:
 
         conversation = []
         for msg in messages:
+            # Pull out the personalization reasons snapshot if present — the
+            # same metadata_json blob also holds quiz_id for QUIZ messages.
+            reasons = None
+            if msg.metadata_json:
+                reasons = msg.metadata_json.get("reasons") or None
+
             item = {
                 "id": msg.id,
                 "role": msg.role.value,
@@ -109,6 +122,7 @@ class ChatService:
                 "content": msg.content,
                 "created_at": msg.created_at,
                 "quiz_data": None,
+                "personalization_reasons": reasons,
             }
 
             if msg.message_type == MessageType.QUIZ and msg.metadata_json:
@@ -186,12 +200,15 @@ class ChatService:
         if msg_count > 0 and msg_count % 20 == 0:
             self._summarize_conversation(session, chat_session_id)
 
-        # 8. Save assistant response
+        # 8. Save assistant response (with a snapshot of the personalization
+        # signals that shaped it — see create_chat for rationale).
+        reasons = build_reasons(profile, retrieved)
         assistant_message = ChatMessage(
             chat_session_id=chat_session_id,
             role=MessageRole.ASSISTANT,
             message_type=MessageType.GENERAL,
             content=response,
+            metadata_json={"reasons": reasons} if reasons else None,
         )
 
         saved_message = self.repo.create_message(assistant_message)

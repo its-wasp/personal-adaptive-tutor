@@ -55,12 +55,14 @@ def send_message(
         content=dto.content,
         reply_to_message_id=dto.reply_to_message_id,
     )
+    reasons = (message.metadata_json or {}).get("reasons") if message.metadata_json else None
     return {
         "id": message.id,
         "role": message.role.value,
         "message_type": message.message_type.value,
         "content": message.content,
         "created_at": message.created_at,
+        "personalization_reasons": reasons,
     }
 
 
@@ -78,6 +80,7 @@ def list_sessions(
             "title": s.title,
             "current_level": s.current_level.value,
             "created_at": s.created_at,
+            "concept_node_id": s.concept_node_id,
         }
         for s in sessions
     ]
