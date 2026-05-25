@@ -18,7 +18,7 @@ import QuizCard from "./QuizCard";
  * Wrapped in React.memo so a growing message list doesn't re-render
  * every bubble when only the last one changes.
  */
-function MessageBubble({ message, onQuizSubmitted }) {
+function MessageBubble({ message, onQuizSubmitted, onNextQuestion }) {
   const isUser = message.role === "user";
   const isQuiz = message.message_type === "QUIZ";
 
@@ -31,6 +31,7 @@ function MessageBubble({ message, onQuizSubmitted }) {
             quizId={message.quiz_data?.quiz_id || message.quiz_id}
             quizData={message.quiz_data}
             onSubmitted={onQuizSubmitted}
+            onNextQuestion={onNextQuestion}
           />
         </div>
       </div>

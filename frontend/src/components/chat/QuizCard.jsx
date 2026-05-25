@@ -7,13 +7,17 @@ import MarkdownRenderer from "../shared/MarkdownRenderer";
  * Inline quiz — renders 4 options, lets the user pick one, submits on click,
  * then shows the result (correct/wrong + explanation + hint).
  *
+ * After submission the correct option is always highlighted green and a wrong
+ * pick is highlighted red. The correct_option is only known client-side after
+ * submit (the server withholds it until then to prevent peeking).
+ *
  * `quizData` matches what the /chat/{id}/conversation endpoint returns
  * when a message is a QUIZ type. It may already contain a prior attempt
  * (selected_option, is_correct, points_awarded) — if so, we render in
  * the completed state directly so the user sees their past answer when
  * they reopen a session.
  */
-export default function QuizCard({ messageId, quizId, quizData, onSubmitted }) {
+export default function QuizCard({ messageId, quizId, quizData, onSubmitted, onNextQuestion }) {
   const alreadyAnswered = quizData?.selected_option != null;
 
   const [selected, setSelected] = useState(quizData?.selected_option || null);
@@ -23,6 +27,7 @@ export default function QuizCard({ messageId, quizId, quizData, onSubmitted }) {
     alreadyAnswered
       ? {
           correct: quizData.is_correct,
+          correct_option: quizData.correct_option,
           points_awarded: quizData.points_awarded,
           explanation: quizData.explanation,
           hint: quizData.is_correct ? null : quizData.hint,
@@ -30,7 +35,9 @@ export default function QuizCard({ messageId, quizId, quizData, onSubmitted }) {
       : null
   );
 
-  const correctOption = quizData?.correct_option;
+  // After submit, result.correct_option is the authoritative source.
+  // Before submit (reloaded from conversation), quizData.correct_option works.
+  const correctOption = result?.correct_option ?? quizData?.correct_option;
 
   async function handleSubmit() {
     if (!selected || submitting || submitted) return;
@@ -133,6 +140,15 @@ export default function QuizCard({ messageId, quizId, quizData, onSubmitted }) {
             <div className="mt-2 text-slate-700">
               <MarkdownRenderer>{result.explanation}</MarkdownRenderer>
             </div>
+          )}
+          {onNextQuestion && (
+            <button
+              type="button"
+              onClick={onNextQuestion}
+              className="mt-3 w-full rounded border border-indigo-300 bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+            >
+              Next question
+            </button>
           )}
         </div>
       )}
