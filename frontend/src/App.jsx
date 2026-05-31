@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import Chat from "./pages/Chat";
 import Review from "./pages/Review";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -55,6 +56,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Review />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />
