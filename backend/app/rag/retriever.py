@@ -1,8 +1,12 @@
 """
 Retrieves relevant content chunks from pgvector based on semantic similarity.
+
+Returns an empty list when the embedding model isn't available (cloud
+deploys without sentence-transformers). The rest of the pipeline —
+personalization, conversation history, learner memory — still works.
 """
 from sqlalchemy.orm import Session
-from app.rag.embedder import embed_text
+from app.rag.embedder import embed_text, is_available
 from app.repositories.embedding_repo import EmbeddingRepository
 
 
@@ -22,7 +26,13 @@ def retrieve(
       - difficulty_level: BEGINNER/INTERMEDIATE/ADVANCED
       - content_type: EXPLANATION/QUIZ_EXPLANATION/REFERENCE_SNIPPET
     """
+    if not is_available():
+        return []
+
     query_vector = embed_text(query_text)
+    if query_vector is None:
+        return []
+
     repo = EmbeddingRepository(db)
 
     results = repo.search_similar(

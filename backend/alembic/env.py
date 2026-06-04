@@ -25,7 +25,7 @@ import app.models
 config = context.config
 
 # Override DB URL dynamically
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.get_database_url())
 
 # Setup logging
 if config.config_file_name is not None:
@@ -41,7 +41,7 @@ target_metadata = Base.metadata
 # Offline mode
 # ---------------------------------------------------------
 def run_migrations_offline() -> None:
-    url = settings.DATABASE_URL
+    url = settings.get_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
