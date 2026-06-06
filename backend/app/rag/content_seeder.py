@@ -8,7 +8,6 @@ Usage:
     docker compose exec backend python -m app.rag.content_seeder
 """
 import time
-import json
 from app.db.session import SessionLocal
 from app.models.concept_node import ConceptNode
 from app.llm.factory import get_llm_provider
