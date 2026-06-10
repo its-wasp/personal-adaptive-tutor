@@ -1,0 +1,7 @@
+# Conservative rule set — pyflakes (F) + syntax errors (E9) only, so the
+# existing codebase stays green. Broaden `select` over time as desired.
+line-length = 100
+exclude = ["alembic", ".venv", "__pycache__"]
+
+[lint]
+select = ["E9", "F"]
