@@ -5,6 +5,7 @@ from app.db.dependencies import get_db
 from app.models.user import User
 from app.utils.auth_middleware import get_current_user
 from app.services.chat_service import ChatService
+from app.services.errors import NotFoundError
 from app.dtos.chat_dto import ChatCreateDTO, ChatMessageCreateDTO
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -49,12 +50,15 @@ def send_message(
     current_user: User = Depends(get_current_user),
 ):
     service = ChatService(db)
-    message = service.send_message(
-        chat_session_id=dto.chat_session_id,
-        user_id=current_user.id,
-        content=dto.content,
-        reply_to_message_id=dto.reply_to_message_id,
-    )
+    try:
+        message = service.send_message(
+            chat_session_id=dto.chat_session_id,
+            user_id=current_user.id,
+            content=dto.content,
+            reply_to_message_id=dto.reply_to_message_id,
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     reasons = (message.metadata_json or {}).get("reasons") if message.metadata_json else None
     return {
         "id": message.id,
@@ -93,7 +97,10 @@ def get_conversation(
     current_user: User = Depends(get_current_user),
 ):
     service = ChatService(db)
-    return service.get_conversation(chat_session_id, current_user.id)
+    try:
+        return service.get_conversation(chat_session_id, current_user.id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.delete("/{chat_session_id}")

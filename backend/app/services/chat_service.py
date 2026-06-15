@@ -9,6 +9,7 @@ from app.llm.personalization_reasons import build_reasons
 from app.llm.response_parser import parse_explanation_response
 from app.services.learner_profile_service import LearnerProfileService
 from app.services.engagement_service import EngagementService
+from app.services.errors import NotFoundError
 from app.models.engagement_event import EventType
 from app.rag import retriever as rag_retriever
 
@@ -92,18 +93,31 @@ class ChatService:
     def list_user_sessions(self, user_id):
         return self.repo.get_user_sessions(user_id)
 
+    def _assert_owns_session(self, chat_session_id, user_id) -> ChatSession:
+        """
+        Return the session only if `user_id` owns it.
+
+        Every entry point that takes a caller-supplied chat_session_id must go
+        through here. A session that exists but belongs to someone else raises
+        the same error as one that doesn't exist, so the response can't be used
+        to probe for valid session ids.
+        """
+        session = self.repo.get_session(chat_session_id)
+        if not session or str(session.user_id) != str(user_id):
+            raise NotFoundError("Chat session not found")
+        return session
+
     def delete_session(self, chat_session_id, user_id):
         """Delete a chat session if it belongs to the user. Returns True on success."""
-        session = self.repo.get_session(chat_session_id)
-        if not session:
-            return False
-        if str(session.user_id) != str(user_id):
-            # Session exists but belongs to someone else — treat as not found
+        try:
+            self._assert_owns_session(chat_session_id, user_id)
+        except NotFoundError:
             return False
         self.repo.delete_session(chat_session_id)
         return True
 
     def get_conversation(self, chat_session_id, user_id):
+        self._assert_owns_session(chat_session_id, user_id)
         messages = self.repo.get_session_messages(chat_session_id)
         quiz_repo = QuizRepository(self.repo.db)
 
@@ -148,7 +162,13 @@ class ChatService:
         return conversation
 
     def send_message(self, chat_session_id, user_id, content, reply_to_message_id=None):
-        # 1. Save user message
+        # 1. Authorize before writing anything. This also replaces the separate
+        # session fetch that used to happen after the insert — which both let a
+        # stranger post into someone else's session and left an orphan message
+        # behind when the session id didn't exist at all.
+        session = self._assert_owns_session(chat_session_id, user_id)
+
+        # 2. Save user message
         user_message = ChatMessage(
             chat_session_id=chat_session_id,
             role=MessageRole.USER,
@@ -158,9 +178,6 @@ class ChatService:
         )
         self.repo.create_message(user_message)
 
-        # 2. Get session for concept context
-        session = self.repo.get_session(chat_session_id)
-
         # 3. Get learner profile for personalization
         profile = self.profile_service.get_personalization_context(user_id)
 
@@ -168,7 +185,7 @@ class ChatService:
         retrieved = rag_retriever.retrieve(
             db=self.db,
             query_text=content,
-            concept_node_id=session.concept_node_id if session else None,
+            concept_node_id=session.concept_node_id,
             limit=3,
         )
 
@@ -179,7 +196,7 @@ class ChatService:
         msg_count = self.repo.get_message_count(chat_session_id)
         messages = [{"role": "system", "content": system_prompt}]
 
-        if msg_count > 20 and session and session.conversation_summary:
+        if msg_count > 20 and session.conversation_summary:
             # Long session — use summary + last 10 messages
             messages.append({
                 "role": "system",
@@ -200,7 +217,7 @@ class ChatService:
         if msg_count > 0 and msg_count % 20 == 0:
             self._summarize_conversation(session, chat_session_id)
 
-        # 8. Save assistant response (with a snapshot of the personalization
+        # 9. Save assistant response (with a snapshot of the personalization
         # signals that shaped it — see create_chat for rationale).
         reasons = build_reasons(profile, retrieved)
         assistant_message = ChatMessage(
@@ -218,7 +235,7 @@ class ChatService:
             user_id=user_id,
             event_type=EventType.MESSAGE_SENT,
             chat_session_id=chat_session_id,
-            concept_node_id=session.concept_node_id if session else None,
+            concept_node_id=session.concept_node_id,
         )
 
         # Update learner memory if enough messages have accumulated
