@@ -8,6 +8,7 @@ from app.services.learner_profile_service import LearnerProfileService
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from app.services.engagement_service import EngagementService
 from app.services.spaced_repetition_service import SpacedRepetitionService
+from app.services.errors import NotFoundError
 from app.models.engagement_event import EventType
 from app.models.chat_session import ChatSession
 from app.models.quiz import Quiz
@@ -26,7 +27,30 @@ class QuizService:
         self.engagement = EngagementService(db)
         self.spaced_rep = SpacedRepetitionService(db)
 
-    def generate_quiz(self, chat_session, user_id):
+    def _owned_session(self, chat_session_id, user_id) -> ChatSession:
+        """
+        Load a chat session, but only if the caller owns it.
+
+        Filtered in SQL rather than fetch-then-compare so a session belonging
+        to someone else is indistinguishable from one that doesn't exist.
+        """
+        session = (
+            self.db.query(ChatSession)
+            .filter(
+                ChatSession.id == chat_session_id,
+                ChatSession.user_id == user_id,
+            )
+            .first()
+        )
+        if not session:
+            raise NotFoundError("Chat session not found")
+        return session
+
+    def generate_quiz(self, chat_session_id, user_id):
+        # Authorize first — the router used to load the session with no user
+        # filter, so anyone could mint quizzes against another learner's session.
+        chat_session = self._owned_session(chat_session_id, user_id)
+
         # Get learner profile for personalization + weak areas
         profile = self.profile_service.get_personalization_context(user_id)
         weak_areas = profile.get("weaknesses", [])
@@ -75,6 +99,13 @@ class QuizService:
 
     def submit_answer(self, quiz_id, user_id, selected_option):
         quiz = self.repo.get_quiz(quiz_id)
+        if not quiz:
+            raise NotFoundError("Quiz not found")
+
+        # A quiz is only answerable by the owner of the session it belongs to.
+        # Without this, any quiz_id could be submitted by any account, awarding
+        # points and moving mastery on a session the caller doesn't own.
+        session = self._owned_session(quiz.chat_session_id, user_id)
 
         is_correct = selected_option == quiz.correct_option
         points = quiz.points if is_correct else 0
@@ -87,11 +118,6 @@ class QuizService:
             points_awarded=points,
         )
         self.repo.create_attempt(attempt)
-
-        # Update topic progress
-        session = self.db.query(ChatSession).filter(
-            ChatSession.id == quiz.chat_session_id
-        ).first()
 
         progress_service = ProgressService(self.db)
         progress = progress_service.update_progress(

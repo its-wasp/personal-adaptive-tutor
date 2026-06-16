@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
 from app.models.user import User
-from app.models.chat_session import ChatSession
 from app.utils.auth_middleware import get_current_user
 from app.services.quiz_service import QuizService
+from app.services.errors import NotFoundError
 from app.dtos.quiz_dto import QuizGenerateDTO, QuizSubmitDTO
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
@@ -17,16 +17,11 @@ def generate_quiz(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    chat_session = db.query(ChatSession).filter(
-        ChatSession.id == dto.chat_session_id
-    ).first()
-
-    if not chat_session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
-
     service = QuizService(db)
     try:
-        quiz = service.generate_quiz(chat_session, user_id=current_user.id)
+        quiz = service.generate_quiz(dto.chat_session_id, user_id=current_user.id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -48,8 +43,11 @@ def submit_answer(
     current_user: User = Depends(get_current_user),
 ):
     service = QuizService(db)
-    return service.submit_answer(
-        quiz_id=dto.quiz_id,
-        user_id=current_user.id,
-        selected_option=dto.selected_option,
-    )
+    try:
+        return service.submit_answer(
+            quiz_id=dto.quiz_id,
+            user_id=current_user.id,
+            selected_option=dto.selected_option,
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
