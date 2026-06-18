@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.repositories.feedback_repo import FeedbackRepository
 from app.services.engagement_service import EngagementService
 from app.services.learner_profile_service import LearnerProfileService
+from app.services.errors import NotFoundError
 from app.models.message_feedback import MessageFeedback
 from app.models.engagement_event import EventType
 
@@ -19,6 +20,13 @@ class FeedbackService:
         self.profile_service = LearnerProfileService(db)
 
     def submit_feedback(self, user_id, message_id, is_helpful, feedback_text=None, feedback_category=None):
+        # Any message_id used to be accepted. Since feedback categories feed
+        # back into the learner's own preferences via _maybe_adjust_profile,
+        # an unowned message_id let one account both annotate another's
+        # conversation and skew their own profile off someone else's content.
+        if not self.repo.message_belongs_to_user(message_id, user_id):
+            raise NotFoundError("Message not found")
+
         feedback = MessageFeedback(
             message_id=message_id,
             is_helpful=is_helpful,
