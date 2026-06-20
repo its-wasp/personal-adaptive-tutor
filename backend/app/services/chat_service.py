@@ -141,20 +141,29 @@ class ChatService:
 
             if msg.message_type == MessageType.QUIZ and msg.metadata_json:
                 quiz_id = msg.metadata_json.get("quiz_id")
-                if quiz_id:
-                    quiz = quiz_repo.get_quiz(quiz_id)
+                quiz = quiz_repo.get_quiz(quiz_id) if quiz_id else None
+                if quiz:
                     attempt = quiz_repo.get_attempt_for_user(quiz_id, user_id)
+                    answered = attempt is not None
                     item["quiz_data"] = {
+                        # quiz_id is what QuizCard posts back on submit. It was
+                        # missing here, so a quiz reopened from history couldn't
+                        # be answered at all.
+                        "quiz_id": str(quiz.id),
                         "question": quiz.question_text,
                         "options": quiz.options_json,
-                        "correct_option": quiz.correct_option,
                         "difficulty": quiz.difficulty,
                         "points": quiz.points,
-                        "hint": quiz.hint,
-                        "explanation": quiz.explanation,
-                        "selected_option": attempt.selected_option if attempt else None,
-                        "is_correct": attempt.is_correct if attempt else None,
-                        "points_awarded": attempt.points_awarded if attempt else None,
+                        # The answer key, the hint and the explanation each give
+                        # the answer away, so none of them are serialised until
+                        # an attempt exists. Previously all three shipped with
+                        # every unanswered quiz and were visible in devtools.
+                        "correct_option": quiz.correct_option if answered else None,
+                        "hint": quiz.hint if answered else None,
+                        "explanation": quiz.explanation if answered else None,
+                        "selected_option": attempt.selected_option if answered else None,
+                        "is_correct": attempt.is_correct if answered else None,
+                        "points_awarded": attempt.points_awarded if answered else None,
                     }
 
             conversation.append(item)

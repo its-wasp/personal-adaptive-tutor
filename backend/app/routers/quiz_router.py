@@ -25,14 +25,15 @@ def generate_quiz(
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+    # hint and explanation are deliberately absent: both reveal the answer, and
+    # the client only needs them in the /quiz/submit response. They used to be
+    # returned here, so the answer was readable before the learner picked.
     return {
         "id": quiz.id,
         "question_text": quiz.question_text,
         "options_json": quiz.options_json,
         "difficulty": quiz.difficulty,
         "points": quiz.points,
-        "hint": quiz.hint,
-        "explanation": quiz.explanation,
     }
 
 

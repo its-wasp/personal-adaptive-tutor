@@ -211,9 +211,12 @@ export default function Chat() {
             options: quiz.options_json,
             difficulty: quiz.difficulty,
             points: quiz.points,
-            hint: quiz.hint,
-            explanation: quiz.explanation,
-            correct_option: null, // hidden until submit
+            // correct_option, hint and explanation are withheld by the server
+            // until an attempt is recorded; QuizCard fills them from the
+            // /quiz/submit response.
+            correct_option: null,
+            hint: null,
+            explanation: null,
             selected_option: null,
             is_correct: null,
             points_awarded: null,
