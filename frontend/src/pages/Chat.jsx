@@ -50,15 +50,18 @@ export default function Chat() {
   // Gate: only logged-in users with completed onboarding can access chat.
   // Onboarding redirect is already handled in Dashboard, but coming
   // directly to /chat also needs the check.
-  if (profile && !profile.onboarding_completed) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  //
+  // The redirect itself lives at the bottom of the component, after every
+  // hook has run. Returning early from here — as this used to — skipped the
+  // hooks below it, so the render that followed `profile` resolving tripped
+  // React's "rendered fewer hooks than the previous render" invariant.
+  const needsOnboarding = Boolean(profile && !profile.onboarding_completed);
 
   // ----- sessions list -----
   const {
     data: sessionsData,
     loading: loadingSessions,
-  } = useApiGet("/chat/sessions");
+  } = useApiGet("/chat/sessions", { skip: needsOnboarding });
 
   useEffect(() => {
     if (sessionsData) setSessions(sessionsData);
@@ -232,6 +235,11 @@ export default function Chat() {
       setGeneratingQuiz(false);
     }
   }, [sessionId, generatingQuiz]);
+
+  // Every hook above has now run, so this early return is safe.
+  if (needsOnboarding) {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50">
