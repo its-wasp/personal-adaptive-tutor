@@ -60,9 +60,13 @@ export default function Onboarding() {
   const [results, setResults] = useState(null);
 
   // If the user already finished onboarding, don't let them re-run it.
-  if (!loading && profile?.onboarding_completed && step !== STEP_RESULTS) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  //
+  // Evaluated here but applied at the bottom of the component: returning
+  // early from this position skipped the useEffect and useMemo declared
+  // further down, so the render after `profile` arrived called fewer hooks
+  // than the one before it and React threw.
+  const alreadyOnboarded =
+    !loading && profile?.onboarding_completed && step !== STEP_RESULTS;
 
   async function handleSubmitPrefs(e) {
     e.preventDefault();
@@ -129,6 +133,11 @@ export default function Onboarding() {
     () => Object.keys(answers).length,
     [answers]
   );
+
+  // Safe here: every hook above has already run.
+  if (alreadyOnboarded) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="mx-auto min-h-full max-w-2xl p-6">
