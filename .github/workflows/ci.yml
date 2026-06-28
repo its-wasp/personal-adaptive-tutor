@@ -135,6 +135,7 @@ jobs:
       - name: Container smoke test (/health)
         run: |
           docker run -d -p 8000:8000 --name tutor-test \
+            -e AUTO_MIGRATE=0 \
             -e JWT_SECRET=test \
             -e GROQ_API_KEY=test \
             -e LLM_PROVIDER=groq \
