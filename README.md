@@ -134,26 +134,40 @@ adaptive-learning-v1/
 ```bash
 git clone https://github.com/its-wasp/personal-adaptive-tutor.git
 cd personal-adaptive-tutor
+cp .env.example .env
 ```
 
-Create a `.env` file in the project root:
-```env
-POSTGRES_DB=adaptive_learning
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-DATABASE_URL=postgresql://postgres:postgres@db:5432/adaptive_learning
+Then edit `.env` and set at minimum:
 
-GROQ_API_KEY=your_groq_api_key
-JWT_SECRET=your_jwt_secret
+| Variable | Notes |
+|---|---|
+| `GROQ_API_KEY` | Required. Free key from [console.groq.com](https://console.groq.com). Without it, chat and quiz generation fail. |
+| `JWT_SECRET` | Any long random string. |
 
-SEARXNG_URL=http://searxng:8080
-```
+The Postgres and SearXNG defaults in `.env.example` work as-is for local Docker.
+For a cloud database, set `DATABASE_URL` instead of the individual `POSTGRES_*`
+variables — it takes precedence when present (see `backend/app/config.py`).
 
 ### 2. Start backend services
 ```bash
 docker compose up
 ```
-This starts PostgreSQL (with pgvector), the FastAPI backend, and SearXNG.
+
+This starts PostgreSQL (with pgvector), the FastAPI backend, and SearXNG. On
+first boot the backend entrypoint automatically:
+
+1. waits for Postgres to accept connections,
+2. runs `alembic upgrade head` (creates the `vector` extension and all 13 tables),
+3. seeds the 25-concept DSA knowledge graph.
+
+Steps 2 and 3 are idempotent, so later starts are no-ops. Watch for
+`[entrypoint]` lines in the logs to confirm. Wait for
+`Application startup complete` before using the app.
+
+Verify with:
+```bash
+curl http://localhost:8000/health/db     # {"status":"ok","database":"connected"}
+```
 
 ### 3. Start frontend
 ```bash
@@ -164,6 +178,30 @@ npm run dev
 
 ### 4. Open in browser
 Navigate to `http://localhost:5173`. Sign up, complete onboarding, and start learning.
+
+### 5. Optional — seed RAG reference content
+The tutor works without this (it falls back to personalization plus conversation
+history), but grounding improves noticeably with it. Generates three explanation
+variants per concept via the LLM and embeds them into pgvector:
+
+```bash
+docker compose exec backend python -m app.rag.content_seeder
+```
+
+Takes roughly 10 minutes for all 25 concepts — it sleeps between calls to stay
+inside Groq's free-tier rate limit. Safe to interrupt and re-run.
+
+### Running without Docker
+If you'd rather run the backend directly, the entrypoint's work has to be done
+by hand:
+
+```bash
+cd backend
+pip install -r requirements.txt
+alembic upgrade head
+python -m app.data.seed_graph
+uvicorn app.main:app --reload
+```
 
 ## CRUD Operations
 
