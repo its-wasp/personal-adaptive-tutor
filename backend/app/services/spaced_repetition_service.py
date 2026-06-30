@@ -69,11 +69,12 @@ class SpacedRepetitionService:
         Get concepts that are due for review (next_review_at <= now).
         Returns enriched data with concept info.
         """
-        due = self.repo.get_ready_for_review(user_id)
+        due = self.repo.get_ready_for_review(user_id)[:limit]
+        node_map = self.repo.get_nodes_by_ids(m.concept_node_id for m in due)
 
         results = []
-        for mastery in due[:limit]:
-            node = self.repo.get_node_by_id(mastery.concept_node_id)
+        for mastery in due:
+            node = node_map.get(mastery.concept_node_id)
             if not node:
                 continue
 

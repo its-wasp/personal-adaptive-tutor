@@ -48,12 +48,19 @@ class LearnerProfileService:
         """
         profile = self.get_or_create_profile(user_id)
 
-        # Get mastery data for strengths/weaknesses
+        # Get mastery data for strengths/weaknesses.
+        # This runs on every chat message and every quiz generation, so the
+        # concept names are resolved in one query rather than one per mastery
+        # row — which was 25+ round trips per request on a full graph.
         mastery_list = self.graph_repo.get_all_user_mastery(user_id)
+        node_map = self.graph_repo.get_nodes_by_ids(
+            m.concept_node_id for m in mastery_list
+        )
+
         strengths = []
         weaknesses = []
         for m in mastery_list:
-            node = self.graph_repo.get_node_by_id(m.concept_node_id)
+            node = node_map.get(m.concept_node_id)
             if not node:
                 continue
             if m.mastery_level >= 0.7:

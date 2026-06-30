@@ -30,6 +30,20 @@ class KnowledgeGraphRepository:
     def get_node_by_id(self, node_id) -> ConceptNode | None:
         return self.db.query(ConceptNode).filter(ConceptNode.id == node_id).first()
 
+    def get_nodes_by_ids(self, node_ids) -> dict:
+        """
+        Resolve many node ids in a single query.
+
+        Returns {node_id: ConceptNode}. Callers that need display names for a
+        list of mastery rows should use this instead of calling
+        get_node_by_id in a loop.
+        """
+        ids = list(node_ids)
+        if not ids:
+            return {}
+        nodes = self.db.query(ConceptNode).filter(ConceptNode.id.in_(ids)).all()
+        return {n.id: n for n in nodes}
+
     # ── Edges ──
 
     def get_all_edges(self, subject: str) -> list[ConceptEdge]:
