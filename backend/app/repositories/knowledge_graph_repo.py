@@ -5,6 +5,11 @@ from app.models.concept_edge import ConceptEdge, RelationType
 from app.models.concept_mastery import ConceptMastery
 
 
+# Mastery a prerequisite must reach before the concepts depending on it unlock.
+# The frontend mirrors this value in Dashboard.jsx and ConceptGrid.jsx.
+UNLOCK_THRESHOLD = 0.6
+
+
 class KnowledgeGraphRepository:
 
     def __init__(self, db: Session):
@@ -55,7 +60,11 @@ class KnowledgeGraphRepository:
         )
 
     def get_prerequisites(self, node_id) -> list[ConceptNode]:
-        """Get all nodes that are prerequisites for the given node."""
+        """
+        Get all nodes that are prerequisites for the given node.
+
+        Two queries per call. For whole-graph work use get_prerequisite_map.
+        """
         edges = (
             self.db.query(ConceptEdge)
             .filter(
@@ -68,6 +77,27 @@ class KnowledgeGraphRepository:
         if not prereq_ids:
             return []
         return self.db.query(ConceptNode).filter(ConceptNode.id.in_(prereq_ids)).all()
+
+    def get_prerequisite_map(self, subject: str) -> dict:
+        """
+        {to_node_id: [from_node_id, ...]} for every PREREQUISITE edge in a subject.
+
+        One query for the entire graph. Only ids are selected because callers
+        resolving unlock state need to look up mastery, not concept rows.
+        """
+        edges = (
+            self.db.query(ConceptEdge.from_node_id, ConceptEdge.to_node_id)
+            .join(ConceptNode, ConceptEdge.from_node_id == ConceptNode.id)
+            .filter(
+                ConceptNode.subject == subject,
+                ConceptEdge.relation_type == RelationType.PREREQUISITE,
+            )
+            .all()
+        )
+        prereq_map: dict = {}
+        for from_id, to_id in edges:
+            prereq_map.setdefault(to_id, []).append(from_id)
+        return prereq_map
 
     # ── Mastery ──
 
@@ -115,26 +145,26 @@ class KnowledgeGraphRepository:
 
     def get_unlocked_concepts(self, user_id, subject: str) -> list[ConceptNode]:
         """
-        Get concepts where ALL prerequisites have mastery >= 0.6.
+        Get concepts where ALL prerequisites are at or above UNLOCK_THRESHOLD.
         Concepts with no prerequisites are always unlocked.
+
+        Three queries total. This used to call get_prerequisites once per node,
+        which meant two more queries per concept — around fifty extra round
+        trips for the 25-node DSA graph, on a path the dashboard hits on load.
         """
         all_nodes = self.get_all_nodes(subject)
-        mastery_map = {}
-        for m in self.get_all_user_mastery(user_id):
-            mastery_map[m.concept_node_id] = m.mastery_level
+        mastery_map = {
+            m.concept_node_id: m.mastery_level
+            for m in self.get_all_user_mastery(user_id)
+        }
+        prereq_map = self.get_prerequisite_map(subject)
 
-        unlocked = []
-        for node in all_nodes:
-            prereqs = self.get_prerequisites(node.id)
-            if not prereqs:
-                unlocked.append(node)
-                continue
-
-            all_met = all(
-                mastery_map.get(p.id, 0.0) >= 0.6
-                for p in prereqs
+        # all(()) is True, so nodes with no prerequisites fall out as unlocked.
+        return [
+            node
+            for node in all_nodes
+            if all(
+                mastery_map.get(prereq_id, 0.0) >= UNLOCK_THRESHOLD
+                for prereq_id in prereq_map.get(node.id, ())
             )
-            if all_met:
-                unlocked.append(node)
-
-        return unlocked
+        ]
