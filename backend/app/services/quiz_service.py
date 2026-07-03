@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.llm.factory import get_llm_provider
 from app.llm.prompt_builder import build_quiz_prompt
 from app.llm.response_parser import parse_quiz_response
+from app.llm.structured import generate_structured
 from app.repositories.quiz_repo import QuizRepository
 from app.services.progress_service import ProgressService
 from app.services.learner_profile_service import LearnerProfileService
@@ -166,41 +167,25 @@ class QuizService:
 
     def _generate_structured_quiz(self, prompt: str) -> dict:
         """
-        Generate a quiz and parse it into the expected shape with one retry
-        on malformed output. Mirrors chat_service._generate_structured_explanation.
+        Generate a quiz and parse it into the expected shape, retrying once on
+        malformed output. Runs hotter than the explanation path so questions
+        don't repeat across a session.
         """
-        messages = [{"role": "user", "content": prompt}]
-
-        # Attempt 1. A ValueError here could come from either the parser or
-        # Groq's server-side JSON validator — both get the same retry treatment.
-        raw = None
-        first_err: Exception | None = None
-        try:
-            raw = self.llm.generate(messages=messages, temperature=0.8, json_mode=True)
-            return parse_quiz_response(raw)
-        except ValueError as e:
-            first_err = e
-
-        retry_messages = list(messages)
-        if raw is not None:
-            retry_messages.append({"role": "assistant", "content": raw})
-        retry_messages.append({
-            "role": "user",
-            "content": (
+        return generate_structured(
+            llm=self.llm,
+            messages=[{"role": "user", "content": prompt}],
+            parse=parse_quiz_response,
+            correction=(
                 "Your previous reply wasn't valid JSON. Reply with a single "
                 "JSON object containing keys: question, options (object mapping "
                 'A-D to strings), correct_option ("A"|"B"|"C"|"D"), points (int), '
                 "and optionally hint and explanation. No markdown fences, "
                 "no commentary."
             ),
-        })
-        try:
-            raw_retry = self.llm.generate(
-                messages=retry_messages, temperature=0.3, json_mode=True
-            )
-            return parse_quiz_response(raw_retry)
-        except ValueError:
-            raise ValueError(
+            failure_message=(
                 "The tutor returned a quiz we couldn't parse. This is usually "
                 "a transient LLM quirk — please try again."
-            ) from first_err
+            ),
+            temperature=0.8,
+            retry_temperature=0.3,
+        )

@@ -7,6 +7,7 @@ from app.llm.factory import get_llm_provider
 from app.llm.prompt_builder import build_explanation_prompt, build_system_prompt
 from app.llm.personalization_reasons import build_reasons
 from app.llm.response_parser import parse_explanation_response
+from app.llm.structured import generate_structured
 from app.services.learner_profile_service import LearnerProfileService
 from app.services.engagement_service import EngagementService
 from app.services.errors import NotFoundError
@@ -256,51 +257,28 @@ class ChatService:
         """
         Generate the opening explanation and parse it into {title, explanation}.
 
-        Uses Groq's JSON mode for server-side structured output, then falls back
-        to the response parser (which handles markdown fences / unescaped newlines)
-        if parsing still fails. Retries once with a stricter instruction before
-        giving up — cheap insurance against transient malformed output.
+        Uses Groq's JSON mode for server-side structured output, falling back to
+        the response parser (which handles markdown fences / unescaped newlines)
+        when that still isn't clean. A failure here surfaces as ValueError and
+        the router maps it to 502.
         """
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        # Attempt 1: normal temperature, JSON mode on. A ValueError here is
-        # either a parse failure or Groq's own JSON validator rejecting the
-        # generation — both get the same retry treatment.
-        raw = None
-        first_err: Exception | None = None
-        try:
-            raw = self.llm.generate(messages=messages, temperature=0.7, json_mode=True)
-            return parse_explanation_response(raw)
-        except ValueError as e:
-            first_err = e
-
-        # Attempt 2: lower temperature + explicit reminder. If the first call
-        # failed before returning text, we skip the assistant turn in history.
-        retry_messages = list(messages)
-        if raw is not None:
-            retry_messages.append({"role": "assistant", "content": raw})
-        retry_messages.append({
-            "role": "user",
-            "content": (
+        return generate_structured(
+            llm=self.llm,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            parse=parse_explanation_response,
+            correction=(
                 "Your previous reply wasn't valid JSON. Reply with a single "
                 'JSON object of the form {"title": "...", "explanation": "..."} '
                 "and nothing else — no markdown fences, no commentary."
             ),
-        })
-        try:
-            raw_retry = self.llm.generate(
-                messages=retry_messages, temperature=0.2, json_mode=True
-            )
-            return parse_explanation_response(raw_retry)
-        except ValueError:
-            # Surface a clean error up to the router, which maps it to a 502.
-            raise ValueError(
+            failure_message=(
                 "The tutor returned a response we couldn't parse. This is "
                 "usually a transient LLM quirk — please try again."
-            ) from first_err
+            ),
+        )
 
     def _summarize_conversation(self, session, chat_session_id):
         """Generate a summary of the conversation so far for long sessions."""
