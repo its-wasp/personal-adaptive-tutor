@@ -5,12 +5,19 @@ from app.db.dependencies import get_db
 from app.models.user import User
 from app.utils.auth_middleware import get_current_user
 from app.services.onboarding_service import OnboardingService
-from app.dtos.onboarding_dto import OnboardingPreferencesDTO, PlacementSubmitDTO
+from app.dtos.onboarding_dto import (
+    OnboardingPreferencesDTO,
+    PlacementSubmitDTO,
+    OnboardingStatusDTO,
+    MessageResponseDTO,
+    PlacementQuizResponseDTO,
+    PlacementSubmitResponseDTO,
+)
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 
-@router.get("/status")
+@router.get("/status", response_model=OnboardingStatusDTO)
 def get_onboarding_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -21,7 +28,7 @@ def get_onboarding_status(
     return {"onboarding_completed": profile.onboarding_completed}
 
 
-@router.post("/preferences")
+@router.post("/preferences", response_model=MessageResponseDTO)
 def submit_preferences(
     dto: OnboardingPreferencesDTO,
     db: Session = Depends(get_db),
@@ -33,7 +40,7 @@ def submit_preferences(
     return {"message": "Preferences saved"}
 
 
-@router.get("/placement")
+@router.get("/placement", response_model=PlacementQuizResponseDTO)
 def get_placement_quiz(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -43,7 +50,7 @@ def get_placement_quiz(
     return {"questions": service.get_placement_quiz()}
 
 
-@router.post("/placement/submit")
+@router.post("/placement/submit", response_model=PlacementSubmitResponseDTO)
 def submit_placement(
     dto: PlacementSubmitDTO,
     db: Session = Depends(get_db),

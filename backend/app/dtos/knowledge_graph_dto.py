@@ -36,3 +36,20 @@ class RecommendedConceptDTO(BaseModel):
     description: Optional[str] = None
     difficulty_tier: int
     current_mastery: float
+
+
+class RecommendationResponseDTO(BaseModel):
+    """
+    Either a recommendation or an explanation of why there isn't one.
+
+    The endpoint answers `{"message": "..."}` when every unlocked concept is
+    already mastered, and the dashboard card branches on that. Both shapes are
+    modelled here rather than forcing one, so the existing contract holds.
+    """
+    id: Optional[UUID] = None
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    difficulty_tier: Optional[int] = None
+    current_mastery: Optional[float] = None
+    message: Optional[str] = None

@@ -6,12 +6,17 @@ from app.models.user import User
 from app.utils.auth_middleware import get_current_user
 from app.services.quiz_service import QuizService
 from app.services.errors import NotFoundError
-from app.dtos.quiz_dto import QuizGenerateDTO, QuizSubmitDTO
+from app.dtos.quiz_dto import (
+    QuizGenerateDTO,
+    QuizSubmitDTO,
+    QuizResponseDTO,
+    QuizSubmitResponseDTO,
+)
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=QuizResponseDTO)
 def generate_quiz(
     dto: QuizGenerateDTO,
     db: Session = Depends(get_db),
@@ -37,7 +42,7 @@ def generate_quiz(
     }
 
 
-@router.post("/submit")
+@router.post("/submit", response_model=QuizSubmitResponseDTO)
 def submit_answer(
     dto: QuizSubmitDTO,
     db: Session = Depends(get_db),

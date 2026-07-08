@@ -5,11 +5,12 @@ from app.db.dependencies import get_db
 from app.models.user import User
 from app.utils.auth_middleware import get_current_user
 from app.services.knowledge_graph_service import KnowledgeGraphService
+from app.dtos.knowledge_graph_dto import GraphResponseDTO, RecommendationResponseDTO
 
 router = APIRouter(prefix="/graph", tags=["knowledge-graph"])
 
 
-@router.get("/{subject}")
+@router.get("/{subject}", response_model=GraphResponseDTO)
 def get_graph(
     subject: str,
     db: Session = Depends(get_db),
@@ -20,7 +21,7 @@ def get_graph(
     return service.get_graph_with_mastery(subject, current_user.id)
 
 
-@router.get("/{subject}/recommend")
+@router.get("/{subject}/recommend", response_model=RecommendationResponseDTO)
 def get_recommendation(
     subject: str,
     db: Session = Depends(get_db),

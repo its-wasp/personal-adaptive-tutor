@@ -6,12 +6,20 @@ from app.models.user import User
 from app.utils.auth_middleware import get_current_user
 from app.services.chat_service import ChatService
 from app.services.errors import NotFoundError
-from app.dtos.chat_dto import ChatCreateDTO, ChatMessageCreateDTO
+from app.dtos.chat_dto import (
+    ChatCreateDTO,
+    ChatMessageCreateDTO,
+    ChatSessionResponseDTO,
+    ChatSessionListDTO,
+    ChatMessageResponseDTO,
+    ConversationItemDTO,
+    DeletedResponseDTO,
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@router.post("/create")
+@router.post("/create", response_model=ChatSessionResponseDTO)
 def create_chat(
     dto: ChatCreateDTO,
     db: Session = Depends(get_db),
@@ -43,7 +51,7 @@ def create_chat(
     }
 
 
-@router.post("/message")
+@router.post("/message", response_model=ChatMessageResponseDTO)
 def send_message(
     dto: ChatMessageCreateDTO,
     db: Session = Depends(get_db),
@@ -70,7 +78,7 @@ def send_message(
     }
 
 
-@router.get("/sessions")
+@router.get("/sessions", response_model=list[ChatSessionListDTO])
 def list_sessions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -90,7 +98,7 @@ def list_sessions(
     ]
 
 
-@router.get("/{chat_session_id}/conversation")
+@router.get("/{chat_session_id}/conversation", response_model=list[ConversationItemDTO])
 def get_conversation(
     chat_session_id: str,
     db: Session = Depends(get_db),
@@ -103,7 +111,7 @@ def get_conversation(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.delete("/{chat_session_id}")
+@router.delete("/{chat_session_id}", response_model=DeletedResponseDTO)
 def delete_session(
     chat_session_id: str,
     db: Session = Depends(get_db),

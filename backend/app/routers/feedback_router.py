@@ -6,12 +6,12 @@ from app.models.user import User
 from app.utils.auth_middleware import get_current_user
 from app.services.feedback_service import FeedbackService
 from app.services.errors import NotFoundError
-from app.dtos.feedback_dto import MessageFeedbackCreateDTO
+from app.dtos.feedback_dto import MessageFeedbackCreateDTO, MessageFeedbackResponseDTO
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
-@router.post("/")
+@router.post("/", response_model=MessageFeedbackResponseDTO)
 def submit_feedback(
     dto: MessageFeedbackCreateDTO,
     db: Session = Depends(get_db),
