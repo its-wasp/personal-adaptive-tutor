@@ -33,6 +33,7 @@ class LearnerProfileResponseDTO(BaseModel):
     onboarding_completed: bool = False
     total_sessions: int = 0
     streak_days: int = 0
+    longest_streak_days: int = 0
     strengths: list[str] = []
     weaknesses: list[str] = []
     learner_summary: Optional[str] = None

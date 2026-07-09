@@ -21,10 +21,13 @@ def get_my_profile(
 ):
     service = LearnerProfileService(db)
     context = service.get_personalization_context(current_user.id)
-    profile = service.get_or_create_profile(current_user.id)
+    # Recomputed on read so the number is current even when the learner hasn't
+    # started a new session today. Cheap: one grouped query over their events.
+    profile = service.refresh_streak(current_user.id)
     return {
         **context,
         "streak_days": profile.streak_days,
+        "longest_streak_days": profile.longest_streak_days,
         "onboarding_completed": profile.onboarding_completed,
     }
 
