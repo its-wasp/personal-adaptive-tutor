@@ -5,6 +5,7 @@ import { useApiGet } from "../hooks/useApi";
 import ConceptGrid from "../components/graph/ConceptGrid";
 import ConceptDetail from "../components/graph/ConceptDetail";
 import RecommendedNext from "../components/dashboard/RecommendedNext";
+import ProgressSummary from "../components/dashboard/ProgressSummary";
 
 /**
  * Dashboard — tiered card grid of DSA concepts.
@@ -128,10 +129,11 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Recommendation strip */}
+      {/* Recommendation + progress strip: what to do next, and how it's going */}
       <div className="border-b border-slate-200 bg-slate-50 px-6 py-3">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto grid max-w-5xl gap-3 md:grid-cols-2">
           <RecommendedNext subject="dsa" onPick={setSelectedId} />
+          <ProgressSummary />
         </div>
       </div>
 
