@@ -45,6 +45,11 @@ class SmokeTest:
         if not ok:
             self.failures += 1
 
+    def _expect_status(self, name: str, resp: requests.Response, expected: int) -> bool:
+        ok = resp.status_code == expected
+        self._step(name, ok, "" if ok else f"expected {expected}, got {resp.status_code}")
+        return ok
+
     def _expect_ok(self, name: str, resp: requests.Response) -> Optional[dict]:
         if resp.status_code >= 400:
             self._step(name, False, f"HTTP {resp.status_code} — {resp.text[:200]}")
@@ -157,7 +162,7 @@ class SmokeTest:
             self.message_id = msg.get("id")
 
         self._expect_ok(
-            f"GET /chat/{{id}}/conversation",
+            "GET /chat/{id}/conversation",
             self._request("GET", f"/chat/{self.session_id}/conversation"),
         )
 
@@ -183,6 +188,133 @@ class SmokeTest:
                 "selected_option": correct,
             }),
         )
+
+    def test_authorization_isolation(self):
+        """
+        Sign up a second learner and confirm they cannot touch the first one's
+        data. Every cross-user attempt must answer 404 rather than 403 — a 403
+        would confirm the id exists and turn these endpoints into an oracle for
+        enumerating other people's sessions.
+        """
+        print("\n== Authorization isolation (second user) ==")
+        if not self.session_id:
+            self._step("skip — no session to probe", False, "chat flow failed")
+            return
+
+        owner_token = self.token
+        victim_session = self.session_id
+        victim_quiz = self.quiz_id
+        victim_message = self.message_id
+
+        intruder_email = f"intruder_{uuid.uuid4().hex[:8]}@smoketest.com"
+        signup = self._expect_ok(
+            "POST /auth/signup (second user)",
+            self._request("POST", "/auth/signup", json={
+                "email": intruder_email,
+                "password": "SmokeTest123!",
+                "name": "Intruder",
+            }),
+        )
+        if not signup:
+            self.token = owner_token
+            return
+
+        # Act as the second user for the probes below.
+        self.token = signup["access_token"]
+
+        self._expect_status(
+            "GET another user's conversation -> 404",
+            self._request("GET", f"/chat/{victim_session}/conversation"),
+            404,
+        )
+        self._expect_status(
+            "POST message into another user's session -> 404",
+            self._request("POST", "/chat/message", json={
+                "chat_session_id": victim_session,
+                "content": "let me in",
+            }),
+            404,
+        )
+        self._expect_status(
+            "POST quiz/generate on another user's session -> 404",
+            self._request("POST", "/quiz/generate", json={"chat_session_id": victim_session}),
+            404,
+        )
+        self._expect_status(
+            "DELETE another user's session -> 404",
+            self._request("DELETE", f"/chat/{victim_session}"),
+            404,
+        )
+        if victim_quiz:
+            self._expect_status(
+                "POST quiz/submit for another user's quiz -> 404",
+                self._request("POST", "/quiz/submit", json={
+                    "quiz_id": victim_quiz,
+                    "selected_option": "A",
+                }),
+                404,
+            )
+        if victim_message:
+            self._expect_status(
+                "POST feedback on another user's message -> 404",
+                self._request("POST", "/feedback/", json={
+                    "message_id": victim_message,
+                    "is_helpful": True,
+                }),
+                404,
+            )
+
+        # The second user's own session list must not leak the first user's.
+        sessions = self._expect_ok("GET /chat/sessions (second user)", self._request("GET", "/chat/sessions"))
+        if sessions is not None:
+            leaked = any(str(s.get("id")) == str(victim_session) for s in sessions)
+            self._step("second user's session list excludes the first user's", not leaked)
+
+        # Restore the original identity for the remaining tests.
+        self.token = owner_token
+
+    def test_quiz_answer_not_leaked(self):
+        """A freshly generated quiz must not ship its own answer key."""
+        print("\n== Quiz answer withholding ==")
+        if not self.session_id:
+            self._step("skip — no session", False, "chat flow failed")
+            return
+
+        quiz = self._expect_ok(
+            "POST /quiz/generate (fresh)",
+            self._request("POST", "/quiz/generate", json={"chat_session_id": self.session_id}),
+        )
+        if not quiz:
+            return
+
+        for field in ("correct_option", "explanation", "hint"):
+            self._step(
+                f"generate response omits {field}",
+                field not in quiz or quiz[field] is None,
+                f"leaked: {quiz.get(field)!r}",
+            )
+
+        convo = self._expect_ok(
+            "GET conversation (unanswered quiz)",
+            self._request("GET", f"/chat/{self.session_id}/conversation"),
+        )
+        if not convo:
+            return
+
+        unanswered = [
+            m for m in convo
+            if m.get("message_type") == "QUIZ"
+            and (m.get("quiz_data") or {}).get("selected_option") is None
+        ]
+        self._step("found an unanswered quiz in the conversation", bool(unanswered))
+        for m in unanswered:
+            data = m["quiz_data"]
+            self._step(
+                "unanswered quiz hides correct_option",
+                data.get("correct_option") is None,
+                f"leaked: {data.get('correct_option')!r}",
+            )
+            self._step("unanswered quiz still carries quiz_id (answerable)", bool(data.get("quiz_id")))
 
     def test_feedback(self):
         print("\n== Feedback ==")
@@ -233,6 +365,8 @@ class SmokeTest:
         self.test_knowledge_graph()
         self.test_chat_flow()
         self.test_quiz_flow()
+        self.test_quiz_answer_not_leaked()
+        self.test_authorization_isolation()
         self.test_feedback()
         self.test_review()
         self.test_analytics()
