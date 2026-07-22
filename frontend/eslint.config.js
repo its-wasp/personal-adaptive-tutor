@@ -23,7 +23,13 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // ignoreRestSiblings covers the `({ node, ...props })` idiom used across
+      // the markdown renderer: `node` is destructured purely to keep it from
+      // being spread onto a DOM element, so it is unused by design.
+      'no-unused-vars': [
+        'error',
+        { varsIgnorePattern: '^[A-Z_]', ignoreRestSiblings: true },
+      ],
     },
   },
   {

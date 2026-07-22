@@ -27,7 +27,6 @@ function MessageBubble({ message, onQuizSubmitted, onNextQuestion }) {
       <div className="flex justify-start">
         <div className="w-full max-w-2xl">
           <QuizCard
-            messageId={message.id}
             quizId={message.quiz_data?.quiz_id || message.quiz_id}
             quizData={message.quiz_data}
             onSubmitted={onQuizSubmitted}

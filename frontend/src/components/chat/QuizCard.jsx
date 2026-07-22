@@ -17,7 +17,7 @@ import MarkdownRenderer from "../shared/MarkdownRenderer";
  * the completed state directly so the user sees their past answer when
  * they reopen a session.
  */
-export default function QuizCard({ messageId, quizId, quizData, onSubmitted, onNextQuestion }) {
+export default function QuizCard({ quizId, quizData, onSubmitted, onNextQuestion }) {
   const alreadyAnswered = quizData?.selected_option != null;
 
   const [selected, setSelected] = useState(quizData?.selected_option || null);

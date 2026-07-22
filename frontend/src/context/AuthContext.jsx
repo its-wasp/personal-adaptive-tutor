@@ -1,5 +1,6 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, tokenStore } from "../lib/api";
+import { AuthContext } from "./auth-context";
 
 /**
  * Global auth state.
@@ -15,12 +16,13 @@ import { api, tokenStore } from "../lib/api";
  * On mount: if we have a token, fetch both to hydrate. If either fails
  * (stale token), clear everything.
  */
-export const AuthContext = createContext(null);
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Seeded from the token so the no-token case starts settled. Deriving it
+  // here rather than calling setLoading(false) inside the effect avoids a
+  // synchronous set-state-in-effect and the extra render it causes.
+  const [loading, setLoading] = useState(() => Boolean(tokenStore.get()));
 
   // Fetch both in parallel — they're independent.
   const hydrate = useCallback(async () => {
@@ -33,19 +35,30 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const token = tokenStore.get();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    hydrate()
-      .catch(() => {
+    // No token means nothing to hydrate, and `loading` already started false.
+    if (!tokenStore.get()) return;
+
+    // Guards against a token that resolves after the provider unmounts —
+    // possible in tests and in fast navigations away from a cold load.
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await hydrate();
+      } catch {
         // Any failure here means the token is bad — wipe and force re-login.
+        if (cancelled) return;
         tokenStore.clear();
         setUser(null);
         setProfile(null);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [hydrate]);
 
   const login = useCallback(
