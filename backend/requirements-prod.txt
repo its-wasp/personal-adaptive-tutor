@@ -1,3 +1,12 @@
+# Slim dependency set for cloud deploys and CI image builds.
+#
+# Deliberately omits sentence-transformers: it pulls PyTorch and pushes the
+# image past ~2 GB, over the limits of most free hosting tiers. app/rag/embedder
+# detects the missing import and disables embedding, the retriever then returns
+# no chunks, and the tutor falls back to personalization plus conversation
+# history. RAG grounding is the only feature lost.
+#
+# Local Docker uses the full requirements.txt so RAG works in development.
 fastapi
 uvicorn[standard]
 sqlalchemy
