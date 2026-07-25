@@ -164,11 +164,8 @@ jobs:
         run: |
           IMAGE=${{ env.IMAGE_NAME }}
           SHA_TAG=sha-${GITHUB_SHA::7}
-          # Slim dependency set: this is the image shape we deploy, and it
-          # avoids pulling PyTorch on every CI run.
-          docker build \
-            --build-arg REQUIREMENTS=requirements-prod.txt \
-            -t $IMAGE:latest -t $IMAGE:$SHA_TAG ./backend
+          # Default build args give the slim, deployable image.
+          docker build -t $IMAGE:latest -t $IMAGE:$SHA_TAG ./backend
 
       - name: Image scan (Trivy)
         uses: aquasecurity/trivy-action@0.24.0

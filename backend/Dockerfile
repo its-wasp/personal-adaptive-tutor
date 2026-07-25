@@ -10,10 +10,10 @@ WORKDIR /app
 #                          chunks, so the tutor still runs on personalization
 #                          and conversation history alone.
 #
-# Compose uses the full set so `docker compose up` gives you RAG. Cloud builds
-# and CI pass --build-arg REQUIREMENTS=requirements-prod.txt, which keeps the
-# image inside free-tier size limits and cuts build time substantially.
-ARG REQUIREMENTS=requirements.txt
+# Slim is the default so any plain `docker build` produces the deployable
+# shape — Render's blueprint spec has no way to pass --build-arg, so the
+# default is what it gets. Compose opts into the full set explicitly.
+ARG REQUIREMENTS=requirements-prod.txt
 
 COPY requirements.txt requirements-prod.txt ./
 RUN pip install --no-cache-dir -r ${REQUIREMENTS}

@@ -21,7 +21,12 @@ services:
       - ./searxng:/etc/searxng
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        # Full dependency set: keeps sentence-transformers, so RAG embedding
+        # works locally. Cloud builds take the slim default.
+        REQUIREMENTS: requirements.txt
     container_name: adaptive_v1_backend
     ports:
       - "8000:8000"

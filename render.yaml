@@ -1,0 +1,71 @@
+# Render blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploys the FastAPI backend and a managed Postgres. The frontend goes to
+# Vercel separately (see vercel.json); Render's static-site option would work
+# too, but Vercel's preview deploys are more useful for a UI.
+#
+# Apply with:  Render dashboard -> New -> Blueprint -> point at this repo.
+#
+# Two values are marked `sync: false`, meaning Render prompts for them on
+# first apply rather than reading them from here — they are secrets or depend
+# on a URL that doesn't exist yet:
+#
+#   GROQ_API_KEY   from console.groq.com
+#   CORS_ORIGINS   the Vercel URL, once the frontend is deployed
+#
+# The image builds from backend/Dockerfile with its default REQUIREMENTS arg,
+# which is the slim set — blueprints cannot pass Docker build args, which is
+# exactly why that default is the slim one.
+
+databases:
+  - name: adaptive-tutor-db
+    databaseName: adaptive_db
+    user: adaptive
+    plan: free
+    postgresMajorVersion: "15"
+
+services:
+  - type: web
+    name: adaptive-tutor-api
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Takes precedence over the individual POSTGRES_* settings — see
+      # Settings.get_database_url in app/config.py.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adaptive-tutor-db
+          property: connectionString
+
+      # Render generates and stores this; it never appears in the repo.
+      - key: JWT_SECRET
+        generateValue: true
+
+      - key: GROQ_API_KEY
+        sync: false
+
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+
+      - key: LLM_PROVIDER
+        value: groq
+
+      # Comma-separated frontend origins, e.g. https://your-app.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Entrypoint runs `alembic upgrade head` and seeds the concept graph on
+      # every boot. Both are idempotent, so redeploys are safe.
+      - key: AUTO_MIGRATE
+        value: "1"
+
+      # SearXNG isn't deployed here, so /references returns nothing useful.
+      # app/config.py defaults this to empty and the rest of the app is
+      # unaffected; left explicit so the omission is deliberate, not forgotten.
+      - key: SEARXNG_URL
+        value: ""
