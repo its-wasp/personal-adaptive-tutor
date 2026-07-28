@@ -1,0 +1,84 @@
+---
+title: Figure 2.3 — Component Interaction (layered backend)
+---
+graph LR
+    subgraph L1["Router layer"]
+        direction TB
+        R_AUTH["auth_router"]
+        R_CHAT["chat_router"]
+        R_QUIZ["quiz_router"]
+        R_GRAPH["knowledge_graph_router"]
+        R_ONB["onboarding_router"]
+        R_PROF["profile_router"]
+        R_REV["review_router"]
+        R_FB["feedback_router"]
+        R_AN["analytics_router"]
+    end
+
+    subgraph L2["Service layer — business rules"]
+        direction TB
+        S_AUTH["AuthService"]
+        S_CHAT["ChatService"]
+        S_QUIZ["QuizService"]
+        S_PROF["LearnerProfileService"]
+        S_GRAPH["KnowledgeGraphService"]
+        S_SR["SpacedRepetitionService"]
+        S_ONB["OnboardingService"]
+        S_PROG["ProgressService"]
+        S_ENG["EngagementService"]
+        S_FB["FeedbackService"]
+        S_AN["AnalyticsService"]
+    end
+
+    subgraph L3["Repository layer — persistence"]
+        direction TB
+        P_USER["UserRepository"]
+        P_CHAT["ChatRepository"]
+        P_QUIZ["QuizRepository"]
+        P_GRAPH["KnowledgeGraphRepository"]
+        P_PROF["LearnerProfileRepository"]
+        P_ENG["EngagementRepository"]
+        P_EMB["EmbeddingRepository"]
+        P_PROG["ProgressRepository"]
+        P_FB["FeedbackRepository"]
+        P_AN["AnalyticsRepository"]
+    end
+
+    R_AUTH --> S_AUTH --> P_USER
+    R_CHAT --> S_CHAT
+    R_QUIZ --> S_QUIZ
+    R_GRAPH --> S_GRAPH
+    R_ONB --> S_ONB
+    R_PROF --> S_PROF
+    R_REV --> S_SR
+    R_FB --> S_FB
+    R_AN --> S_AN
+
+    S_CHAT --> P_CHAT
+    S_CHAT --> S_PROF
+    S_CHAT --> S_ENG
+    S_QUIZ --> P_QUIZ
+    S_QUIZ --> S_PROG
+    S_QUIZ --> S_GRAPH
+    S_QUIZ --> S_SR
+    S_QUIZ --> S_ENG
+    S_PROF --> P_PROF
+    S_PROF --> P_GRAPH
+    S_PROF --> P_ENG
+    S_GRAPH --> P_GRAPH
+    S_SR --> P_GRAPH
+    S_ONB --> P_GRAPH
+    S_ONB --> S_PROF
+    S_PROG --> P_PROG
+    S_ENG --> P_ENG
+    S_FB --> P_FB
+    S_FB --> S_PROF
+    S_AN --> P_AN
+    S_CHAT -.->|"retriever"| P_EMB
+
+    classDef router fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    classDef service fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
+    classDef repo fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    class R_AUTH,R_CHAT,R_QUIZ,R_GRAPH,R_ONB,R_PROF,R_REV,R_FB,R_AN router
+    class S_AUTH,S_CHAT,S_QUIZ,S_PROF,S_GRAPH,S_SR,S_ONB,S_PROG,S_ENG,S_FB,S_AN service
+    class P_USER,P_CHAT,P_QUIZ,P_GRAPH,P_PROF,P_ENG,P_EMB,P_PROG,P_FB,P_AN repo

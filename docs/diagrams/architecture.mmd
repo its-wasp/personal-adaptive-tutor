@@ -1,0 +1,58 @@
+---
+title: Figure 2.1 — System Architecture
+---
+graph TB
+    subgraph client["Client Tier — Vercel CDN"]
+        SPA["React 19 SPA<br/>Vite · Tailwind · React Router 7"]
+        AUTHCTX["AuthContext<br/>JWT in localStorage"]
+        SPA --- AUTHCTX
+    end
+
+    subgraph api["Application Tier — Render (Docker)"]
+        direction TB
+        ROUTERS["Routers — 24 REST endpoints<br/>FastAPI + Pydantic DTOs"]
+        MW["Auth middleware<br/>Bearer JWT → User"]
+        SERVICES["Services — business logic<br/>chat · quiz · profile · graph · SM-2"]
+        REPOS["Repositories — data access<br/>SQLAlchemy ORM"]
+
+        MW --> ROUTERS
+        ROUTERS --> SERVICES
+        SERVICES --> REPOS
+    end
+
+    subgraph intel["Personalization Subsystem"]
+        direction TB
+        PROMPT["Prompt Builder<br/>profile + memory + RAG blocks"]
+        PARSER["Response Parser<br/>4-strategy JSON extraction"]
+        REASONS["Personalization Reasons<br/>'Why this response' snapshot"]
+        RAG["RAG Retriever<br/>all-MiniLM-L6-v2 · 384-dim"]
+    end
+
+    subgraph data["Data Tier"]
+        PG[("PostgreSQL 15<br/>13 tables")]
+        VEC[("pgvector<br/>content_embeddings")]
+    end
+
+    subgraph ext["External Services"]
+        GROQ["Groq API<br/>llama-3.1-8b-instant"]
+        SEARX["SearXNG<br/>meta-search (local only)"]
+    end
+
+    SPA -->|"HTTPS · JSON · Bearer JWT"| MW
+    SERVICES --> PROMPT
+    SERVICES --> PARSER
+    SERVICES --> REASONS
+    SERVICES --> RAG
+    PROMPT -->|"assembled prompt"| GROQ
+    GROQ -->|"completion"| PARSER
+    RAG -->|"cosine similarity"| VEC
+    REPOS --> PG
+    VEC -.->|"same instance"| PG
+    SERVICES -.->|"optional"| SEARX
+
+    classDef tier fill:#eef2ff,stroke:#6366f1,stroke-width:1px,color:#1e1b4b
+    classDef store fill:#ecfdf5,stroke:#10b981,stroke-width:1px,color:#064e3b
+    classDef external fill:#fff7ed,stroke:#f59e0b,stroke-width:1px,color:#7c2d12
+    class SPA,AUTHCTX,ROUTERS,MW,SERVICES,REPOS,PROMPT,PARSER,REASONS,RAG tier
+    class PG,VEC store
+    class GROQ,SEARX external
