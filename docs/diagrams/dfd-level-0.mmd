@@ -1,0 +1,26 @@
+---
+title: Figure 2.2a — Data Flow Diagram, Level 0 (Context)
+---
+graph LR
+    LEARNER(["Learner<br/><i>external entity</i>"])
+    GROQ(["Groq LLM API<br/><i>external entity</i>"])
+    SEARX(["SearXNG<br/><i>external entity</i>"])
+
+    SYSTEM["<b>0</b><br/>Adaptive Learning<br/>Platform"]
+
+    LEARNER -->|"credentials, preferences,<br/>placement answers"| SYSTEM
+    LEARNER -->|"questions, quiz answers,<br/>message feedback"| SYSTEM
+
+    SYSTEM -->|"personalized explanations,<br/>quizzes, 'why this response'"| LEARNER
+    SYSTEM -->|"mastery graph, review queue,<br/>progress analytics"| LEARNER
+
+    SYSTEM -->|"assembled prompt<br/>(profile + memory + references)"| GROQ
+    GROQ -->|"generated explanation,<br/>quiz JSON, learner summary"| SYSTEM
+
+    SYSTEM -->|"topic search query"| SEARX
+    SEARX -->|"reference articles<br/>and videos"| SYSTEM
+
+    classDef entity fill:#fff7ed,stroke:#f59e0b,stroke-width:1px,color:#7c2d12
+    classDef process fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#1e1b4b
+    class LEARNER,GROQ,SEARX entity
+    class SYSTEM process

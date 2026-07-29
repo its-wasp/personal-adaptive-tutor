@@ -1,0 +1,69 @@
+---
+title: Figure 2.2b — Data Flow Diagram, Level 1
+---
+graph TB
+    LEARNER(["Learner"])
+    GROQ(["Groq LLM API"])
+
+    P1["<b>1.0</b><br/>Authenticate<br/>& Authorize"]
+    P2["<b>2.0</b><br/>Onboard &<br/>Assess Placement"]
+    P3["<b>3.0</b><br/>Conduct<br/>Tutoring Session"]
+    P4["<b>4.0</b><br/>Generate &<br/>Grade Quiz"]
+    P5["<b>5.0</b><br/>Track Mastery<br/>& Schedule Review"]
+    P6["<b>6.0</b><br/>Evolve Learner<br/>Profile"]
+
+    D1[("D1 · users")]
+    D2[("D2 · learner_profiles")]
+    D3[("D3 · chat_sessions<br/>chat_messages")]
+    D4[("D4 · quizzes<br/>quiz_attempts")]
+    D5[("D5 · concept_nodes<br/>concept_edges")]
+    D6[("D6 · concept_mastery")]
+    D7[("D7 · content_embeddings")]
+    D8[("D8 · engagement_events")]
+
+    LEARNER -->|"email, password"| P1
+    P1 -->|"credentials"| D1
+    P1 -->|"JWT"| LEARNER
+
+    LEARNER -->|"preferences,<br/>placement answers"| P2
+    P2 -->|"style, pace, detail"| D2
+    P2 -->|"seed initial mastery"| D6
+    P2 -->|"read concept names"| D5
+    P2 -->|"assessed level"| LEARNER
+
+    LEARNER -->|"topic, question"| P3
+    D2 -->|"profile + learner memory"| P3
+    D6 -->|"strengths, weaknesses"| P3
+    D7 -->|"similar reference chunks"| P3
+    P3 -->|"assembled prompt"| GROQ
+    GROQ -->|"explanation"| P3
+    P3 -->|"messages + reasons snapshot"| D3
+    P3 -->|"explanation,<br/>'why this response'"| LEARNER
+    P3 -->|"MESSAGE_SENT"| D8
+
+    LEARNER -->|"selected option"| P4
+    D2 -->|"weak areas to target"| P4
+    P4 -->|"quiz request"| GROQ
+    GROQ -->|"question JSON"| P4
+    P4 -->|"quiz, attempt"| D4
+    P4 -->|"result, explanation"| LEARNER
+    P4 -->|"QUIZ_COMPLETED"| D8
+    P4 -->|"correct / incorrect"| P5
+
+    P5 -->|"mastery, ease factor,<br/>next_review_at"| D6
+    D5 -->|"prerequisite edges"| P5
+    P5 -->|"unlocked concepts,<br/>review queue"| LEARNER
+
+    D3 -->|"recent conversation"| P6
+    P6 -->|"summarize"| GROQ
+    GROQ -->|"learner summary"| P6
+    P6 -->|"evolving memory"| D2
+    D8 -->|"active dates"| P6
+    P6 -->|"streak"| D2
+
+    classDef entity fill:#fff7ed,stroke:#f59e0b,color:#7c2d12
+    classDef process fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    classDef store fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    class LEARNER,GROQ entity
+    class P1,P2,P3,P4,P5,P6 process
+    class D1,D2,D3,D4,D5,D6,D7,D8 store
