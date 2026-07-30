@@ -1,0 +1,168 @@
+---
+title: Figure 2.4 — Entity-Relationship Model
+---
+erDiagram
+    users ||--o| learner_profiles : "has one"
+    users ||--o{ chat_sessions : "owns"
+    users ||--o{ quiz_attempts : "submits"
+    users ||--o{ topic_progress : "accumulates"
+    users ||--o{ concept_mastery : "demonstrates"
+    users ||--o{ engagement_events : "generates"
+
+    chat_sessions ||--o{ chat_messages : "contains"
+    chat_sessions ||--o{ quizzes : "contains"
+    chat_sessions }o--o| concept_nodes : "may be pinned to"
+
+    chat_messages ||--o| message_feedback : "may receive"
+    chat_messages }o--o| chat_messages : "may reply to"
+
+    quizzes ||--o{ quiz_attempts : "graded by"
+
+    concept_nodes ||--o{ concept_edges : "source of"
+    concept_nodes ||--o{ concept_edges : "target of"
+    concept_nodes ||--o{ concept_mastery : "measured by"
+    concept_nodes ||--o{ content_embeddings : "explained by"
+
+    users {
+        uuid id PK
+        string name
+        string email UK "indexed"
+        string password_hash "bcrypt"
+        enum role "USER | ADMIN"
+        datetime created_at
+        datetime updated_at
+    }
+
+    learner_profiles {
+        uuid id PK
+        uuid user_id FK,UK "one profile per user"
+        string learning_style "VISUAL | READING | EXAMPLE_FIRST | THEORY_FIRST"
+        string pace_preference "QUICK | MODERATE | DETAILED"
+        string explanation_detail_level "CONCISE | STANDARD | VERBOSE"
+        string preferred_code_complexity "SIMPLE | MODERATE | ADVANCED"
+        boolean analogy_preference
+        boolean onboarding_completed
+        integer total_sessions
+        integer streak_days "derived from engagement_events"
+        integer longest_streak_days
+        text learner_summary "evolving tutor memory"
+        datetime summary_updated_at
+        jsonb strengths_json
+        jsonb weaknesses_json
+    }
+
+    chat_sessions {
+        uuid id PK
+        uuid user_id FK
+        uuid concept_node_id FK "null for free-form topics"
+        string topic_name
+        string topic_description
+        enum initial_knowledge_level "BEGINNER | INTERMEDIATE | ADVANCED"
+        enum current_level "moves with topic_progress"
+        string title "LLM-generated"
+        text conversation_summary "compaction past 20 messages"
+    }
+
+    chat_messages {
+        uuid id PK
+        uuid chat_session_id FK
+        uuid reply_to_message_id FK "self-referential"
+        enum role "USER | ASSISTANT"
+        enum message_type "EXPLANATION | DOUBT | QUIZ | GENERAL"
+        text content
+        jsonb metadata_json "quiz_id and personalization reasons"
+    }
+
+    quizzes {
+        uuid id PK
+        uuid chat_session_id FK
+        text question_text
+        jsonb options_json "A-D"
+        string correct_option "withheld until an attempt exists"
+        string difficulty
+        integer points
+        text hint
+        text explanation
+    }
+
+    quiz_attempts {
+        uuid id PK
+        uuid quiz_id FK
+        uuid user_id FK
+        string selected_option
+        boolean is_correct
+        integer points_awarded
+    }
+
+    message_feedback {
+        uuid id PK
+        uuid message_id FK
+        boolean is_helpful
+        text feedback_text
+        string feedback_category "TOO_COMPLEX | TOO_SIMPLE | JUST_RIGHT | NOT_RELEVANT"
+    }
+
+    topic_progress {
+        uuid id PK
+        uuid user_id FK
+        string topic_name
+        integer total_points
+        string current_level "threshold-driven"
+        integer quizzes_attempted
+        integer quizzes_correct
+    }
+
+    concept_nodes {
+        uuid id PK
+        string subject "dsa"
+        string name "unique per subject"
+        string display_name
+        text description
+        integer difficulty_tier "1-5"
+        integer estimated_minutes
+        jsonb tags_json
+    }
+
+    concept_edges {
+        uuid id PK
+        uuid from_node_id FK
+        uuid to_node_id FK
+        enum relation_type "PREREQUISITE | RELATED | EXTENDS"
+        float weight
+    }
+
+    concept_mastery {
+        uuid id PK
+        uuid user_id FK,UK "unique with concept_node_id"
+        uuid concept_node_id FK,UK
+        float mastery_level "0.0-1.0"
+        float confidence
+        integer total_interactions
+        integer correct_answers
+        integer total_answers
+        datetime last_reviewed_at
+        datetime next_review_at "SM-2 schedule"
+        float review_interval_days
+        float ease_factor "SM-2, floor 1.3"
+    }
+
+    engagement_events {
+        uuid id PK
+        uuid user_id FK
+        uuid chat_session_id FK "nulled on session delete"
+        uuid concept_node_id FK
+        enum event_type "SESSION_START | MESSAGE_SENT | QUIZ_COMPLETED | ..."
+        jsonb payload_json
+    }
+
+    content_embeddings {
+        uuid id PK
+        uuid concept_node_id FK
+        uuid source_id "polymorphic, unconstrained"
+        string content_type "EXPLANATION | QUIZ_EXPLANATION | REFERENCE_SNIPPET"
+        text content_text
+        string content_summary
+        string difficulty_level
+        jsonb metadata_json
+        vector embedding "384-dim, all-MiniLM-L6-v2"
+    }
