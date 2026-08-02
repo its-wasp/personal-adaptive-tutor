@@ -1,0 +1,67 @@
+---
+title: Figure 2.6 — Sequence, quiz submission through mastery and SM-2
+---
+sequenceDiagram
+    autonumber
+    actor L as Learner
+    participant UI as QuizCard.jsx
+    participant R as quiz_router
+    participant QS as QuizService
+    participant PS as ProgressService
+    participant KG as KnowledgeGraphService
+    participant SR as SpacedRepetitionService
+    participant DB as PostgreSQL
+
+    L->>UI: selects an option
+    UI->>R: POST /quiz/submit {quiz_id, selected_option}
+    R->>QS: submit_answer(quiz_id, user_id, option)
+
+    rect rgb(254, 242, 242)
+        note over QS,DB: A quiz is answerable only by the<br/>owner of the session holding it
+        QS->>DB: SELECT quiz
+        QS->>DB: SELECT session WHERE id=? AND user_id=?
+        DB-->>QS: session, or nothing → 404
+    end
+
+    QS->>QS: is_correct = (option == correct_option)<br/>points = quiz.points if correct else 0
+    QS->>DB: INSERT quiz_attempt
+
+    QS->>PS: update_progress(topic, points, is_correct)
+    PS->>DB: UPDATE topic_progress
+    PS->>PS: level from cumulative points<br/>(50 → INTERMEDIATE, 150 → ADVANCED)
+    PS-->>QS: progress
+    QS->>DB: sync session.current_level
+
+    alt session is pinned to a concept
+        QS->>KG: update_mastery_after_quiz(concept, is_correct)
+        KG->>DB: SELECT concept_mastery
+        KG->>KG: accuracy = correct / total
+        KG->>KG: mastery = 0.7·accuracy + 0.3·previous
+        note right of KG: Blended rather than replaced, so one<br/>unlucky answer can't erase a history<br/>of correct ones
+        KG->>KG: confidence = min(1, interactions / 10)
+        KG->>DB: UPDATE concept_mastery
+        KG-->>QS: mastery row
+
+        QS->>SR: update_after_review(mastery, is_correct)
+        SR->>SR: quality = 5 if correct and mastery ≥ 0.7<br/>else 4 if correct, else 1
+        SR->>SR: EF += 0.1 − (5−q)(0.08 + 0.02(5−q)),<br/>floored at 1.3
+
+        alt quality < 3 (incorrect)
+            SR->>SR: interval = 1 day
+            note right of SR: Reset, not decremented —<br/>a missed concept comes back tomorrow
+        else first success
+            SR->>SR: interval 1 → 6 days
+        else subsequent success
+            SR->>SR: interval ×= ease factor
+        end
+
+        SR->>DB: UPDATE next_review_at = now + interval
+        SR-->>QS: rescheduled
+    else free-form topic
+        note over QS: Points still accrue, but no concept<br/>mastery and no review scheduling
+    end
+
+    QS->>DB: INSERT engagement event
+    QS-->>R: {correct, correct_option, points,<br/>explanation, hint if wrong, new_level}
+    R-->>UI: result
+    UI-->>L: green or red option, explanation,<br/>and a "Next question" prompt

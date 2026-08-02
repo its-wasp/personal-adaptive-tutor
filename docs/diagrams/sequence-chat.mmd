@@ -1,0 +1,71 @@
+---
+title: Figure 2.5 — Sequence, a personalized chat turn
+---
+sequenceDiagram
+    autonumber
+    actor L as Learner
+    participant UI as Chat.jsx
+    participant R as chat_router
+    participant CS as ChatService
+    participant LP as LearnerProfileService
+    participant RAG as RAG Retriever
+    participant PB as Prompt Builder
+    participant LLM as Groq API
+    participant DB as PostgreSQL
+
+    L->>UI: types a question
+    UI->>UI: optimistic user bubble,<br/>pin as scroll anchor
+    UI->>R: POST /chat/message {session_id, content}
+
+    R->>CS: send_message(session_id, user_id, content)
+
+    rect rgb(254, 242, 242)
+        note over CS,DB: Authorize before writing anything
+        CS->>DB: get_session(session_id)
+        DB-->>CS: session
+        CS->>CS: owner mismatch or missing → 404
+    end
+
+    CS->>DB: INSERT user message
+
+    rect rgb(238, 242, 255)
+        note over CS,RAG: Gather personalization signals
+        CS->>LP: get_personalization_context(user_id)
+        LP->>DB: profile + all concept mastery
+        DB-->>LP: rows
+        LP->>LP: derive strengths (≥0.7)<br/>and weaknesses (<0.4)
+        LP-->>CS: style, pace, detail, strengths,<br/>weaknesses, learner_summary
+
+        CS->>RAG: retrieve(query=content, concept_node_id, limit=3)
+        RAG->>RAG: embed query → 384-dim vector
+        RAG->>DB: ORDER BY embedding <=> query
+        DB-->>RAG: nearest reference chunks
+        RAG-->>CS: grounding material
+    end
+
+    CS->>PB: build_system_prompt(profile, chunks)
+    PB-->>CS: persona + memory + adaptation rules + references
+
+    CS->>DB: recent messages (20, or summary + 10 if long)
+    DB-->>CS: history
+
+    CS->>LLM: chat completion (temperature 0.7)
+    LLM-->>CS: explanation
+
+    CS->>CS: build_reasons(profile, chunks)
+    note right of CS: Snapshot taken now, not at render time —<br/>the profile evolves, and an old message<br/>should show the profile that shaped it
+    CS->>DB: INSERT assistant message + reasons
+
+    CS->>DB: INSERT engagement event
+
+    opt every 5th message
+        CS->>LP: maybe_update_summary()
+        LP->>LLM: merge new observations into learner memory
+        LLM-->>LP: revised summary
+        LP->>DB: UPDATE learner_profiles
+        note right of LP: Failures here are swallowed —<br/>memory is an enhancement, not<br/>a reason to lose the reply
+    end
+
+    CS-->>R: saved message
+    R-->>UI: {content, personalization_reasons}
+    UI-->>L: rendered markdown +<br/>"Why this response" pill
