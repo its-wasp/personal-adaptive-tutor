@@ -1,0 +1,22 @@
+{
+  "_comment": "Fill these in once; build_report.py substitutes them into every {{placeholder}} across the chapters. Anything left empty renders as a visible blank line so it can't be missed in the PDF.",
+
+  "title": "Adaptive Learning Platform — A Personal AI Tutor for Data Structures and Algorithms",
+
+  "students": [
+    { "name": "Suraj", "roll": "" },
+    { "name": "Sandip Dey", "roll": "" },
+    { "name": "Udit Nayak", "roll": "" }
+  ],
+
+  "program": "BSc Computer Science (Online Mode)",
+  "institution": "",
+  "academic_year": "",
+  "supervisor": "",
+  "submission_date": "",
+
+  "github_url": "https://github.com/its-wasp/personal-adaptive-tutor",
+  "demo_video_url": "",
+  "frontend_url": "",
+  "backend_url": ""
+}
