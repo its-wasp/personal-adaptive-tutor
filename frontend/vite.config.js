@@ -13,7 +13,9 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{js,jsx}'],
-      exclude: ['src/main.jsx', 'src/test/**'],
+      // Spec files would otherwise count themselves as covered source and
+      // inflate the figure.
+      exclude: ['src/main.jsx', 'src/test/**', '**/*.test.{js,jsx}'],
     },
   },
 })
