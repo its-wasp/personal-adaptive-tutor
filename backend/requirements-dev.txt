@@ -1,0 +1,7 @@
+# Development & CI dependencies (not installed in production image).
+# pytest and httpx already ship in requirements.txt.
+-r requirements.txt
+
+ruff
+pip-audit
+pytest-cov
