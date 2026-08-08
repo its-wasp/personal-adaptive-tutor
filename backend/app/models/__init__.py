@@ -11,3 +11,27 @@ from app.models.concept_mastery import ConceptMastery
 from app.models.learner_profile import LearnerProfile
 from app.models.engagement_event import EngagementEvent, EventType
 from app.models.content_embedding import ContentEmbedding
+
+# Re-exported so importing `app.models` registers every model with
+# SQLAlchemy's Base.metadata (needed by Alembic autogenerate & create_all).
+__all__ = [
+    "User",
+    "UserRole",
+    "ChatSession",
+    "KnowledgeLevel",
+    "ChatMessage",
+    "MessageRole",
+    "MessageType",
+    "Quiz",
+    "QuizAttempt",
+    "TopicProgress",
+    "MessageFeedback",
+    "ConceptNode",
+    "ConceptEdge",
+    "RelationType",
+    "ConceptMastery",
+    "LearnerProfile",
+    "EngagementEvent",
+    "EventType",
+    "ContentEmbedding",
+]
