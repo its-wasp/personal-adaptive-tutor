@@ -99,6 +99,12 @@ docker-compose.override.yml
 *.orig
 
 # ===============================
+# Generated report output
+# ===============================
+# Chapters are the source; the .docx is a build artefact of build_report.py
+docs/Capstone-Report.docx
+
+# ===============================
 # Misc
 # ===============================
 *.env.local

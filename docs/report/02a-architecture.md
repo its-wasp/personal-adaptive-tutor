@@ -58,7 +58,7 @@ cooperate on every generated response:
 
 > **Figure 2.2a — Data Flow Diagram, Level 0.** Source:
 > `docs/diagrams/dfd-level-0.mmd`
->
+
 > **Figure 2.2b — Data Flow Diagram, Level 1.** Source:
 > `docs/diagrams/dfd-level-1.mmd`
 
@@ -135,6 +135,22 @@ not a separate vector database. At this scale a dedicated vector store would
 add an operational dependency and a consistency problem for no benefit;
 pgvector's cosine-distance operator over a few hundred rows is more than
 sufficient.
+
+### 2.1.6 Runtime sequences
+
+Two flows are given as sequence diagrams because their ordering constraints
+matter and are not evident from the static structure.
+
+> **Figure 2.5 — Sequence, a personalized chat turn.** Source:
+> `docs/diagrams/sequence-chat.mmd`
+
+> **Figure 2.6 — Sequence, quiz submission through mastery and SM-2.** Source:
+> `docs/diagrams/sequence-quiz-mastery.mmd`
+
+Figure 2.5 shows the three personalization sources converging before the model
+is called. Figure 2.6 shows why mastery must be updated before SM-2 runs: the
+recall-quality mapping reads the *new* mastery level to decide between quality
+4 and quality 5.
 
 ## 2.2 Technology Stack
 
