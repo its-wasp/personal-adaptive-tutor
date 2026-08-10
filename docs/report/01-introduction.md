@@ -2,180 +2,124 @@
 
 ## 1.1 Overview of the Project
 
-The Adaptive Learning Platform is a web-based tutoring system for Data
-Structures and Algorithms that adapts its teaching to the individual learner. A
-learner signs up, states how they prefer to be taught, and sits a short
-placement quiz. From that point the system maintains a model of them — what
-they have mastered, what they struggle with, and how they respond to different
-kinds of explanation — and conditions every subsequent interaction on it.
+The Adaptive Learning Platform is a web-based tutor for Data Structures and
+Algorithms that adapts what it teaches to the individual learner. A user signs
+up, says how they prefer to be taught, and takes a short placement quiz. From
+then on the system keeps a model of what they know and how they learn, and uses
+it to shape every explanation and quiz question.
 
-The application is a React single-page frontend over a FastAPI backend and a
-PostgreSQL database, using a hosted large language model for generation. It
-covers the full learning loop: a conversational tutor, on-demand quizzes, a
-knowledge graph tracking per-concept mastery, and a spaced-repetition schedule
-that brings weak concepts back for review.
+It is built as a React single-page application over a FastAPI backend and a
+PostgreSQL database, with a hosted language model doing the text generation. The
+application covers a full learning loop: a chat-based tutor, on-demand quizzes,
+a knowledge graph that tracks mastery per concept, and a revision schedule that
+brings weak topics back for review.
 
-What separates it from a chat interface placed in front of a language model is
-that the personalization is *architectural*. The learner model lives in the
-database, is assembled into every prompt by a dedicated prompt-building layer,
-and is exposed back to the learner through the interface. Chapter 2 details
-each of the four mechanisms involved.
+The part we care about is that the personalization is built into the system
+rather than added as a prompt instruction. The learner model lives in the
+database, a dedicated prompt-building layer assembles it into every request, and
+the interface shows the learner which parts of their profile were used.
 
 ## 1.2 Problem Statement and Motivation
 
-### The problem
+Learners studying DSA have plenty of material available. Brilliant, Codecademy
+and YouTube all have large, well-made catalogues. What they have in common is
+that the content is fixed: the explanation of recursion is the same no matter
+who reads it.
 
-Self-directed learners studying Data Structures and Algorithms have no shortage
-of material. Platforms such as Brilliant, Codecademy and YouTube offer large,
-well-produced catalogues. What they share is a fixed presentation: the
-explanation of recursion is the same explanation regardless of who is reading
-it.
+That causes two problems. A learner who needs a worked example before an
+abstract definition may give up on a theory-first treatment and decide the topic
+is beyond them. A learner who already understands the abstraction wastes time on
+motivating examples. Neither is a problem with content quality. It is a problem
+of fit.
 
-This creates two failure modes. A learner who needs a worked example before an
-abstract definition may bounce off a theory-first treatment and conclude the
-topic is beyond them. A learner who already understands the abstraction wastes
-time on motivating examples they did not need. Neither is a content-quality
-problem; both are a fit problem.
+Three gaps follow from this:
 
-Three specific gaps follow:
-
-1. **No memory across sessions.** A returning learner starts from zero. The
+1. **No memory between sessions.** A returning learner starts from scratch. The
    platform does not know what confused them last week.
-2. **No adaptive difficulty.** Content is authored at one level. The learner
-   must self-select, without reliable information about their own competence.
-3. **No individual model.** Progress tracking is typically completion-based —
-   videos watched, exercises attempted — rather than a model of what the
-   learner actually understands.
+2. **No adaptive difficulty.** Content is written at one level and the learner
+   has to pick for themselves, without much information about their own level.
+3. **No model of the learner.** Progress is usually tracked by completion,
+   videos watched or exercises attempted, not by what the learner understands.
 
-### Motivation
+Bloom's "2 Sigma" study [1] found that students taught one-to-one performed
+about two standard deviations better than students in conventional classrooms.
+Bloom presented this as a problem to solve rather than a curiosity: one-to-one
+tutoring does not scale, so the task is to find scalable methods that get close
+to it.
 
-Benjamin Bloom's "2 Sigma" study [1] found that students taught one-to-one
-performed roughly two standard deviations above conventionally taught students —
-the median tutored learner outperforming ninety-eight percent of the control
-group. Bloom framed the finding as a problem to be solved: one-to-one tutoring
-does not scale economically, so the task is to find scalable methods that
-approach its results.
+A lot of what a tutor does can in principle be automated. Checking whether the
+student has understood, adjusting the explanation, and coming back to weak
+material at the right time are all mechanical in nature. Language models make
+the generation part easy. The remaining work is keeping a learner model,
+deciding what to teach next, grounding the content so it stays accurate, and
+scheduling revision. That is what this project tries to do.
 
-Much of the tutor's advantage comes from behaviours that are, in principle,
-mechanisable: continuously assessing understanding, adjusting explanation to the
-individual, and returning to weak material at the right interval. Large language
-models make the generation side tractable. The engineering problem is the rest —
-maintaining a durable learner model, deciding what to teach next, grounding
-generated content so it stays accurate, and scheduling revision. That problem is
-the subject of this project.
-
-### Why it matters
-
-Data Structures and Algorithms is a compulsory, heavily assessed subject, and a
-common point of attrition in computer science programmes. Its concepts are
-strongly ordered: a learner who has not internalised recursion will not follow
-tree traversal, and one shaky on time complexity cannot evaluate why one sorting
-algorithm is preferred over another. Prerequisite structure of this kind is
-precisely what a knowledge graph can represent and a fixed linear syllabus
-cannot.
+DSA is a reasonable subject to try it on. It is compulsory in most computer
+science programmes and a common point where students struggle. Its topics are
+also strongly ordered: someone who has not understood recursion will not follow
+tree traversal. That kind of prerequisite structure is something a graph can
+represent and a linear syllabus cannot.
 
 ## 1.3 Objectives of the Capstone
 
-The project set out to deliver the following.
-
-**O1 — Model the learner explicitly.** Persist learning style, pace, detail
-level and code-complexity preferences, and maintain per-concept mastery scores
-derived from actual performance rather than self-report.
-
-**O2 — Condition every generated response on that model.** Assemble prompts
-from modular blocks so that profile, cross-session memory and retrieved
-reference material all shape the output.
-
-**O3 — Give the tutor durable memory.** Maintain a natural-language summary of
-how the learner thinks, revised automatically as the conversation progresses and
-carried across sessions.
-
-**O4 — Ground generation in reference material.** Use vector similarity search
-over embedded explanations so the tutor draws on stored material rather than
-generating freely, reducing the scope for confident errors.
-
-**O5 — Represent the subject as a prerequisite graph.** Model DSA as concepts
-with typed dependencies, and use mastery of prerequisites to gate and recommend
-what comes next.
-
-**O6 — Schedule revision on evidence.** Apply the SM-2 algorithm to quiz
-outcomes so review intervals expand on success and reset on failure.
-
-**O7 — Make the adaptation visible.** Surface the specific signals that shaped
-each response, so personalization is demonstrable to the learner rather than
-asserted.
-
-**O8 — Engineer it as a deployable system.** Layered architecture, migrations,
-automated tests, a CI pipeline including security scanning, and a documented
-path to cloud deployment.
+| # | Objective |
+|---|---|
+| O1 | Store an explicit learner profile, and derive per-concept mastery from actual quiz performance rather than self-assessment |
+| O2 | Use that profile to shape every generated response |
+| O3 | Maintain a memory of the learner that carries across sessions |
+| O4 | Ground generated explanations in stored reference material |
+| O5 | Model DSA as a graph of concepts with prerequisite relationships |
+| O6 | Schedule revision based on quiz results using a spaced repetition algorithm |
+| O7 | Show the learner which signals shaped each response |
+| O8 | Build it as a deployable system with tests, CI and documented deployment |
 
 ## 1.4 Scope of Implementation
 
-### In scope
+**Included:**
 
-| Area | Delivered |
-|---|---|
-| Subject domain | Data Structures and Algorithms — 25 concepts, 37 typed edges, 5 difficulty tiers |
-| Accounts | Email and password sign-up, bcrypt hashing, JWT sessions |
-| Onboarding | Preference capture plus a 10-question placement quiz seeding initial mastery |
-| Tutoring | Multi-session conversational chat with markdown and syntax-highlighted code |
-| Assessment | LLM-generated multiple-choice quizzes targeting the learner's weak areas |
-| Progress | Per-concept mastery, prerequisite unlocking, next-concept recommendation |
-| Revision | SM-2 scheduling with a dedicated review queue |
-| Transparency | Per-message record of the personalization signals applied |
-| Profile management | View and edit preferences; view accumulated tutor memory |
-| Engineering | 24 REST endpoints, 13 tables, 133 automated tests, 5-stage CI, cloud deployment configuration |
+- 25 DSA concepts across 5 difficulty tiers, with 37 prerequisite edges
+- Email and password accounts with bcrypt hashing and JWT sessions
+- Onboarding: preference capture plus a 10-question placement quiz
+- Chat-based tutoring with markdown and syntax-highlighted code
+- Generated multiple-choice quizzes aimed at the learner's weak areas
+- Per-concept mastery, prerequisite unlocking, next-concept recommendation
+- SM-2 revision scheduling with a review queue
+- A per-message record of the personalization signals applied
+- Profile page for editing preferences and viewing the tutor's memory
+- 24 REST endpoints, 13 tables, 133 automated tests, 5-job CI pipeline
 
-### Out of scope
+**Not included, and why:**
 
-Deliberately excluded, with reasons:
+- **Other subjects.** The schema is subject-agnostic, but only the DSA graph is
+  written. Adding another subject is a data task, not a code change.
+- **Code execution.** The tutor explains and quizzes but does not run learner
+  code. A sandboxed judge is a large piece of work on its own.
+- **Free-text answer grading.** Assessment is multiple-choice because it can be
+  graded objectively. Grading written answers with an LLM brings a reliability
+  problem we did not attempt to solve.
+- **Multi-user features.** No cohorts, leaderboards or instructor views.
+- **Model fine-tuning.** Personalization is done through prompt construction and
+  retrieval, not training.
 
-- **Subjects beyond DSA.** The schema is subject-agnostic — `concept_nodes`
-  carries a `subject` column — but only the DSA graph is authored. Adding
-  another subject is a data exercise, not a code change.
-- **Code execution.** The tutor explains and quizzes; it does not run learner
-  code. A sandboxed judge is a substantial subsystem in its own right.
-- **Free-text answer grading.** Assessment is multiple-choice, which is
-  objectively gradable. Grading free-form answers with an LLM introduces a
-  reliability problem the project does not attempt to solve.
-- **Multi-user features.** No cohorts, leaderboards or instructor dashboards.
-  The system models one learner at a time.
-- **Native mobile applications.** The interface is responsive; there is no
-  native client.
-- **Model fine-tuning.** Personalization is achieved through prompt
-  construction and retrieval, not by training a model.
+**Constraints we worked under:**
 
-### Assumptions and constraints
+Groq's free tier has rate limits, which is why the content seeder paces itself
+and why retrieval is capped at two or three chunks per request. Free cloud
+hosting limits image size, so the deployed backend leaves out the local
+embedding model and runs without RAG grounding. It falls back to profile-based
+personalization instead of failing. This is discussed in sections 4.4 and 6.3.
 
-- Groq's free tier imposes rate limits, which shapes the content seeder's
-  pacing and the decision to cap retrieved chunks at two or three per request.
-- Free-tier cloud hosting caps image size, so the deployed backend omits the
-  local embedding model and RAG grounding is unavailable in the cloud
-  deployment. The system degrades to profile-driven personalization rather than
-  failing. This is discussed in sections 4.4 and 6.3.
-- Evaluation is functional. Measuring learning gain would require a controlled
-  study with human participants, which is outside the scope of this submission.
+Evaluation is functional. Measuring whether the system actually improves
+learning would need a controlled study with real students over several weeks,
+which was not possible in the time available.
 
 ## 1.5 Organization of the Report
 
-**Chapter 2 — Implementation Details** presents the system architecture, data
-flow and component interaction; the technology stack and the reasoning behind
-each choice; a module-by-module description; the key algorithms in pseudocode,
-covering mastery estimation, SM-2 scheduling, prerequisite unlocking, prompt
-assembly and structured-output recovery; and annotated screenshots and code.
-
-**Chapter 3 — Testing, Validation and Results** sets out the testing strategy
-and tooling, the test-case matrix with outcomes, and analysis of the results,
-including the four access-control defects found during development.
-
-**Chapter 4 — Execution and Deployment** covers the execution environments,
-local and cloud deployment procedures, and the differences between them.
-
-**Chapter 5 — Project Execution Evidence** records the repository, the commit
-history, the weekly progress log and the supervisor interactions.
-
-**Chapter 6 — Conclusion and Future Work** summarises what was built, states
-the limitations honestly, and identifies the extensions the architecture is
-positioned for.
+Chapter 2 covers the architecture, technology choices, module breakdown and the
+main algorithms, with screenshots and code. Chapter 3 covers the test plan, test
+cases and results, including the security issues found during development.
+Chapter 4 covers how to run and deploy the system. Chapter 5 contains the
+version control evidence and weekly progress log. Chapter 6 summarises what was
+built, what its limitations are, and what could be added next.
 
 {{PAGEBREAK}}

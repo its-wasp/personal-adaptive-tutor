@@ -4,341 +4,245 @@
 
 ### 2.1.1 Architectural style
 
-The system is a three-tier web application whose backend is internally divided
-into four layers. Each layer may call only the one beneath it.
+The system is a three-tier web application. The backend is split into four
+layers, and each layer only calls the one below it.
 
-| Layer | Directory | Responsibility | Must not |
-|---|---|---|---|
-| Router | `app/routers/` | HTTP concerns: parse request, authenticate, map exceptions to status codes, serialise via DTO | Contain business rules or query the database |
-| Service | `app/services/` | Business rules: authorization, orchestration, algorithms | Know about HTTP, or issue raw SQL |
-| Repository | `app/repositories/` | Data access: queries, persistence | Contain business rules |
-| Model | `app/models/` | Schema: tables, columns, relationships | Contain behaviour |
+| Layer | Directory | Responsibility |
+|---|---|---|
+| Router | `app/routers/` | Parse the request, authenticate, map errors to status codes, serialise the response |
+| Service | `app/services/` | Business rules, authorization, algorithms |
+| Repository | `app/repositories/` | Database queries |
+| Model | `app/models/` | Table definitions |
 
-The discipline pays off in two visible places. The whole ownership-check fix
-described in Chapter 3 was a service-layer change, applied once and inherited by
-every route that calls those services. And because services raise domain
-exceptions such as `NotFoundError` rather than `HTTPException`, they are
-directly testable without a web framework — every one of the 37 tests added
-during hardening runs without starting a server.
+Two things came out of this that were useful in practice. The access control fix
+described in Chapter 3 was a single change in the service layer, and every route
+that calls those services picked it up. And because services raise their own
+exceptions instead of FastAPI's `HTTPException`, they can be tested without
+starting a web server. All 37 tests added during the hardening phase run that
+way.
 
-Two extension points use the same abstract-base-class pattern:
+There are two pluggable interfaces. `app/llm/base_provider.py` defines
+`generate()`, implemented by `GroqProvider` and selected by a factory from
+configuration. `app/search/base_provider.py` does the same for web search. No
+service imports Groq directly.
 
-- `app/llm/base_provider.py` declares `generate(messages, temperature,
-  max_tokens, json_mode)`. `GroqProvider` implements it; `get_llm_provider()`
-  selects one from configuration. No service imports Groq directly.
-- `app/search/base_provider.py` does the same for web search, currently
-  implemented by SearXNG.
-
-The value is not hypothetical. When Groq's server-side JSON validator rejects a
-generation it raises a provider-specific `BadRequestError`; `GroqProvider`
-translates that into a plain `ValueError`, so the retry logic in
-`app/llm/structured.py` handles provider rejections and parse failures through
-one path and stays provider-agnostic.
+This paid off in one specific case. When Groq's server-side JSON validator
+rejects a response it raises a Groq-specific error. `GroqProvider` converts it
+into a plain `ValueError`, so the retry logic handles provider rejections and
+parse failures through the same path without knowing which provider is in use.
 
 ### 2.1.2 High-level architecture
 
 ![](../screenshots/fig-2.1-architecture.png)
 
-> **Figure 2.1 — System Architecture.** Source:
-> `docs/diagrams/architecture.mmd`
+> **Figure 2.1 — System Architecture.** Source: `docs/diagrams/architecture.mmd`
 
-The figure separates the personalization subsystem from the general service
-layer, because that subsystem is the project's substance. Four components
-cooperate on every generated response:
+The diagram separates the personalization components from the rest of the
+service layer. Four of them work together on every response:
 
-- **Prompt Builder** (`app/llm/prompt_builder.py`) assembles the system prompt
-  from modular blocks — tutor persona, learner memory, adaptation instructions
-  derived from the profile, and retrieved reference material.
-- **RAG Retriever** (`app/rag/retriever.py`) embeds the query and finds the
-  nearest stored explanations by cosine distance.
-- **Response Parser** (`app/llm/response_parser.py`) recovers structured output
-  from imperfect model responses.
-- **Personalization Reasons** (`app/llm/personalization_reasons.py`) records
-  which signals were applied, for display to the learner.
+- **Prompt Builder** assembles the system prompt from the tutor persona, learner
+  memory, profile-derived instructions and retrieved reference text.
+- **RAG Retriever** embeds the learner's question and finds the closest stored
+  explanations.
+- **Response Parser** recovers structured output from imperfect model responses.
+- **Personalization Reasons** records which signals were used, for display.
 
 ### 2.1.3 Data flow
 
 ![](../screenshots/fig-2.2a-dfd-level-0.png)
 
-> **Figure 2.2a — Data Flow Diagram, Level 0.** Source:
-> `docs/diagrams/dfd-level-0.mmd`
+> **Figure 2.2a — Data Flow Diagram, Level 0.** Source: `docs/diagrams/dfd-level-0.mmd`
 
 ![](../screenshots/fig-2.2b-dfd-level-1.png)
 
-> **Figure 2.2b — Data Flow Diagram, Level 1.** Source:
-> `docs/diagrams/dfd-level-1.mmd`
+> **Figure 2.2b — Data Flow Diagram, Level 1.** Source: `docs/diagrams/dfd-level-1.mmd`
 
-The level-1 diagram decomposes the platform into six processes over eight data
-stores. Two flows carry most of the system's character.
+The level-1 diagram splits the system into six processes over eight data stores.
+Two of them matter most.
 
-**Process 3.0, conducting a tutoring session,** reads from three stores before
-calling the model: the learner profile and accumulated memory, mastery-derived
-strengths and weaknesses, and vector-retrieved reference chunks. That
-convergence is what distinguishes a personalized explanation from a generic one.
+Process 3.0, running a tutoring session, reads from three stores before it calls
+the model: the profile and learner memory, strengths and weaknesses derived from
+mastery, and retrieved reference chunks. Those three coming together is what
+makes an explanation personalized rather than generic.
 
-**Process 6.0, evolving the learner profile,** closes the loop. Conversation
-history is summarised by the model into an updated learner memory, which feeds
-process 3.0 on the next turn. The system's knowledge of the learner is therefore
-a function of every prior session, not just the current one.
+Process 6.0 closes the loop. Conversation history goes back to the model for
+summarisation and returns as an updated learner memory, which feeds process 3.0
+next time. What the system knows about a learner therefore depends on all their
+earlier sessions, not just the current one.
 
 ### 2.1.4 Component interaction
 
 ![](../screenshots/fig-2.3-component-interaction.png)
 
-> **Figure 2.3 — Component Interaction.** Source:
-> `docs/diagrams/component-interaction.mmd`
+> **Figure 2.3 — Component Interaction.** Source: `docs/diagrams/component-interaction.mmd`
 
-Most routes follow one router → one service → one repository. Two are
-deliberately wider:
-
-`ChatService` composes `LearnerProfileService` and `EngagementService` in
-addition to its own repository, because producing one reply requires profile
-data, retrieval and event tracking together.
-
-`QuizService` fans out furthest. Submitting a single answer updates topic
-progress, concept mastery, the spaced-repetition schedule and the engagement
-log. Keeping that orchestration in one service — rather than spreading it
-across the router and several repositories — means the ordering constraint
-(mastery must be updated before SM-2 reads it, since scheduling depends on the
-new mastery level) is expressed in one readable place.
+Most routes are one router to one service to one repository. Two are wider.
+`ChatService` also uses `LearnerProfileService` and `EngagementService`, because
+producing one reply needs profile data, retrieval and event tracking together.
+`QuizService` is the widest: submitting one answer updates topic progress,
+concept mastery, the revision schedule and the engagement log. Keeping that in
+one service means the ordering constraint stays in one place, since mastery has
+to be updated before the SM-2 code reads it.
 
 ### 2.1.5 Database design
 
 ![](../screenshots/fig-2.4-er-model.png)
 
-> **Figure 2.4 — Entity-Relationship Model.** Source:
-> `docs/diagrams/er-model.mmd`
+> **Figure 2.4 — Entity-Relationship Model.** Source: `docs/diagrams/er-model.mmd`
 
-Thirteen tables. All inherit `BaseEntity`, giving every row a UUID primary key
-and `created_at` / `updated_at` timestamps. UUIDs rather than sequential
-integers avoid exposing record counts and make identifiers non-guessable, which
-matters given how many endpoints accept an id from the client.
+Thirteen tables. All inherit a base class giving every row a UUID primary key
+and created/updated timestamps. We used UUIDs rather than auto-incrementing
+integers because many endpoints take an ID from the client, and sequential IDs
+are easy to guess.
 
-Design points worth noting:
+A few design points worth explaining:
 
-**Mastery is a state row, not an event log.** `concept_mastery` carries a
-composite unique constraint on `(user_id, concept_node_id)`. Each learner has
-exactly one mastery row per concept, updated in place. The full history lives in
-`quiz_attempts` and `engagement_events` if it is ever needed, but the read path
-that matters — "what does this learner know?" — is a single indexed lookup.
+**Mastery is stored as current state, not a log.** `concept_mastery` has a
+unique constraint on `(user_id, concept_node_id)`, so each learner has one row
+per concept, updated in place. The full history is still in `quiz_attempts` if
+it is ever needed, but the common query, "what does this learner know", is a
+single lookup.
 
-**Prerequisites are typed edges, not a fixed ordering.** `concept_edges` has a
-`relation_type` of `PREREQUISITE`, `RELATED` or `EXTENDS`. Only `PREREQUISITE`
-gates unlocking; the others exist to inform recommendation and are available to
-the interface. A single edge table serves both directions, with two
-relationships defined on `ConceptNode` distinguished by foreign key.
+**Prerequisites are typed edges.** `concept_edges` has a relation type of
+PREREQUISITE, RELATED or EXTENDS. Only PREREQUISITE controls unlocking. One edge
+table serves both directions of the graph.
 
-**JSONB where the shape is genuinely variable.** `metadata_json` on
-`chat_messages` holds a quiz reference for quiz messages and a personalization
-snapshot for assistant messages. `payload_json` on `engagement_events` differs
-per event type. Both would otherwise require either a wide sparse table or a
-join per message.
+**JSONB only where the shape varies.** `metadata_json` on `chat_messages` holds
+a quiz reference for quiz messages and a personalization snapshot for assistant
+messages. Storing these as columns would mean a mostly-empty wide table.
 
-**Engagement survives deletion.** Deleting a chat session removes its messages,
-quizzes, attempts and feedback in foreign-key-safe order, but *nulls* the
-session reference on `engagement_events` rather than deleting them. A learner
-who deletes a session should not lose their study streak.
+**Engagement events survive session deletion.** Deleting a chat session removes
+its messages, quizzes and attempts, but only nulls the session reference on
+`engagement_events`. Someone who deletes a session should not lose their study
+streak as a side effect.
 
-**Vector storage is co-located.** `content_embeddings.embedding` is a
-`vector(384)` column in the same PostgreSQL instance as the relational data,
-not a separate vector database. At this scale a dedicated vector store would
-add an operational dependency and a consistency problem for no benefit;
-pgvector's cosine-distance operator over a few hundred rows is more than
-sufficient.
+**Vectors live in the same database.** The embedding column is a `vector(384)`
+in PostgreSQL rather than a separate vector database. At a few hundred rows a
+dedicated store would add another service to run and keep in sync for no real
+benefit.
 
 ### 2.1.6 Runtime sequences
 
-Two flows are given as sequence diagrams because their ordering constraints
-matter and are not evident from the static structure.
-
 ![](../screenshots/fig-2.5-sequence-chat.png)
 
-> **Figure 2.5 — Sequence, a personalized chat turn.** Source:
-> `docs/diagrams/sequence-chat.mmd`
+> **Figure 2.5 — Sequence, a personalized chat turn.** Source: `docs/diagrams/sequence-chat.mmd`
 
 ![](../screenshots/fig-2.6-sequence-quiz-mastery.png)
 
-> **Figure 2.6 — Sequence, quiz submission through mastery and SM-2.** Source:
-> `docs/diagrams/sequence-quiz-mastery.mmd`
+> **Figure 2.6 — Sequence, quiz submission through mastery and SM-2.** Source: `docs/diagrams/sequence-quiz-mastery.mmd`
 
-Figure 2.5 shows the three personalization sources converging before the model
-is called. Figure 2.6 shows why mastery must be updated before SM-2 runs: the
-recall-quality mapping reads the *new* mastery level to decide between quality
+Figure 2.5 shows the three personalization sources coming together before the
+model call. Figure 2.6 shows why mastery has to be updated before the SM-2 step:
+the recall quality mapping reads the new mastery value to choose between quality
 4 and quality 5.
 
 ## 2.2 Technology Stack
 
 ### 2.2.1 Languages
 
-| Language | Where | Why |
+Python 3.11 for the backend, chosen for its LLM and embedding libraries.
+JavaScript (ES2022) with plain JSX for the frontend, no TypeScript. SQL for
+migrations and the vector similarity queries.
+
+### 2.2.2 Backend
+
+| Library | Role | Why |
 |---|---|---|
-| Python 3.11 | Backend | Strongest ecosystem for LLM and embedding work; `X \| None` union syntax and native `list[str]` generics keep signatures readable |
-| JavaScript (ES2022) | Frontend | Plain JSX without TypeScript, per project constraints |
-| SQL | Migrations, vector queries | Cosine-distance ordering is expressed directly |
+| FastAPI | Web framework | Dependency injection gives clean per-request DB sessions and a reusable auth dependency; generates API docs from the DTOs |
+| Pydantic v2 | Validation | Invalid requests rejected at the boundary; response models make the API contract explicit |
+| SQLAlchemy 2.0 | ORM | Declarative models, confined to the repository layer |
+| Alembic | Migrations | Versioned schema changes, three so far |
+| pgvector | Vector search | Keeps embeddings next to the relational data |
+| sentence-transformers | Embeddings | `all-MiniLM-L6-v2` runs locally, no per-embedding API cost |
+| groq | LLM client | Fast on the free tier, supports JSON mode |
+| python-jose, bcrypt | Auth | JWT signing and password hashing |
 
-### 2.2.2 Backend frameworks and libraries
+### 2.2.3 Frontend
 
-| Library | Role | Rationale |
+| Library | Role | Why |
 |---|---|---|
-| FastAPI | Web framework | Dependency injection gives clean per-request database sessions and an authentication dependency reused across every protected route; generates OpenAPI documentation from the DTOs |
-| Pydantic v2 | Validation, serialisation | Request validation at the boundary — an invalid signup never reaches a service; response models make the API contract explicit and machine-checkable |
-| SQLAlchemy 2.0 | ORM | Declarative models with typed relationships; the repository layer confines it so services stay persistence-agnostic |
-| Alembic | Migrations | Versioned, reviewable schema changes. Three migrations to date |
-| pgvector | Vector similarity | Keeps embeddings beside relational data; exposes `cosine_distance` through the SQLAlchemy type |
-| sentence-transformers | Embeddings | `all-MiniLM-L6-v2` runs locally: no per-embedding API cost, no data leaving the deployment, 384 dimensions is a good size/quality trade |
-| groq | LLM client | Fast inference on the free tier; supports server-side JSON mode |
-| python-jose | JWT | Signing and verification with expiry |
-| bcrypt | Password hashing | Deliberate slowness and per-password salting |
-| httpx | HTTP client | Used by the SearXNG provider |
+| React 19 | UI | Suits a stateful chat interface; hooks covered all our state needs |
+| Vite 5 | Build | Fast dev server, handles build-time config |
+| React Router 7 | Routing | 9 routes; URL-driven state means a refresh keeps your place |
+| Tailwind CSS 3 | Styling | Utility classes, responsive breakpoints for the mobile sidebar |
+| react-markdown | Rendering | Renders tutor output with raw HTML disabled, which matters for model-generated text |
+| rehype-highlight | Code | Syntax highlighting in code blocks |
 
-### 2.2.3 Frontend frameworks and libraries
-
-| Library | Role | Rationale |
-|---|---|---|
-| React 19 | UI | Component model suits a stateful chat interface; hooks cover all state needs without a store library |
-| Vite 5 | Build tool | Fast dev server; `import.meta.env` handles build-time configuration |
-| React Router 7 | Routing | Nine routes; URL-driven state means the selected session and concept survive refresh and are shareable |
-| Tailwind CSS 3 | Styling | Utility classes keep styling colocated with markup; responsive breakpoints handle the mobile sidebar |
-| react-markdown | Rendering | Renders tutor output; raw HTML disabled by default, which matters when displaying model-generated content |
-| rehype-highlight | Code highlighting | Syntax highlighting inside markdown code fences |
-| react-hot-toast | Notifications | Non-blocking error feedback |
-
-Deliberately **not** used: a state-management library (Context plus local state
-is sufficient at nine routes), and a data-fetching library (the two custom hooks
-in `useApi.js` cover the needed cases in 76 lines).
+We deliberately did not use a state management library or a data fetching
+library. Context plus local state was enough at this size, and the two hooks in
+`useApi.js` cover our cases in 76 lines.
 
 ### 2.2.4 Tools and platforms
 
-| Tool | Purpose |
-|---|---|
-| Docker Compose | Runs database, backend and search with one command |
-| PostgreSQL 15 (pgvector image) | Relational and vector storage |
-| SearXNG | Self-hosted meta-search for reference lookup |
-| Git and GitHub | Version control; three contributors |
-| GitHub Actions | Five-job CI pipeline |
-| ruff | Python linting |
-| pytest | Backend testing, with coverage |
-| Vitest, React Testing Library | Frontend testing |
-| ESLint | JavaScript linting, including React hook rules |
-| CodeQL | Static application security testing |
-| pip-audit | Dependency vulnerability scanning |
-| Trivy | Container image scanning |
-| Render, Vercel | Cloud hosting for backend and frontend |
+Docker Compose runs the database, backend and search with one command.
+PostgreSQL 15 using the pgvector image. Git and GitHub for version control
+across three contributors, with GitHub Actions for CI. Testing uses pytest and
+Vitest with React Testing Library. Quality and security checks use ruff, ESLint,
+CodeQL, pip-audit and Trivy. Deployment targets Render for the backend and
+Vercel for the frontend.
 
 ## 2.3 System Modules
 
-### 2.3.1 Authentication
+**Authentication** (`auth_router`, `auth_service`, `utils/security.py`). Signup
+hashes the password with bcrypt and issues a 24-hour JWT. `get_current_user` is
+a FastAPI dependency that decodes the token and loads the user, so no protected
+route can accidentally skip authentication. Login returns the same message
+whether the email is unknown or the password is wrong, so it cannot be used to
+find out which accounts exist.
 
-**Files:** `routers/auth_router.py`, `services/auth_service.py`,
-`utils/security.py`, `utils/auth_middleware.py`
+**Learner profile** (`learner_profile_service`, `prompt_builder`,
+`personalization_reasons`). Holds the stated preferences and the derived state.
+`get_personalization_context` builds the dictionary the prompt builder consumes:
+preferences, strengths (mastery at or above 0.7), weaknesses (below 0.4 with at
+least one answer recorded), and the accumulated memory. Every five messages the
+service asks the model to update that memory, telling it to merge rather than
+replace and to trust newer evidence where the two conflict. If that call fails
+it is logged and ignored, since a summarisation error should not cost the
+learner their reply.
 
-Sign-up hashes with bcrypt — per-password salt, deliberately slow — and issues a
-24-hour HS256 JWT carrying the user id as `sub`. `get_current_user` is a FastAPI
-dependency that decodes the token, loads the user, and raises 401 on any
-failure; every protected route declares it, so no route can accidentally omit
-authentication.
+**Knowledge graph** (`knowledge_graph_service`, `knowledge_graph_repo`,
+`dsa_graph.json`). 25 concepts in 5 tiers with 37 typed edges, seeded from JSON.
+Provides the graph with mastery overlaid, the unlocked set, and the
+next-concept recommendation. Mastery updates blend 70% observed accuracy with
+30% previous mastery so one wrong answer does not wipe out a good record.
 
-Login answers the same "Invalid email or password" whether the address is
-unknown or the password wrong, so the endpoint cannot be used to enumerate
-registered accounts.
+**Chat** (`chat_service`). Owns sessions and messages. Session creation calls
+the model before saving anything, so a generation failure does not leave an
+empty session behind. Past 20 messages the service switches to a generated
+summary plus the last 10 turns, which keeps token usage roughly flat as a
+session grows.
 
-### 2.3.2 Learner profile and personalization
+**Quiz** (`quiz_service`). Generates one question at a time, aimed at recorded
+weak areas where there are any. Grading is server-side, and the answer, hint and
+explanation are withheld until an attempt exists. Submitting an answer updates
+topic progress, concept mastery, the SM-2 schedule and the engagement log.
 
-**Files:** `services/learner_profile_service.py`,
-`llm/prompt_builder.py`, `llm/personalization_reasons.py`
+**Spaced repetition** (`spaced_repetition_service`). SM-2 over quiz results,
+described in section 2.4.
 
-Holds explicit preferences and derived state. `get_personalization_context`
-assembles the dictionary consumed by the prompt builder: preferences, plus
-strengths (mastery ≥ 0.7) and weaknesses (mastery < 0.4 with at least one
-answer recorded), plus the accumulated learner memory.
+**RAG** (`rag/`). The seeder writes beginner, intermediate and advanced
+explanations for each concept and embeds them. At query time the retriever
+embeds the question and returns the nearest chunks. If sentence-transformers is
+not installed the embedder reports itself unavailable, the retriever returns
+nothing, and the prompt builder leaves out the reference block. This is what
+makes the smaller cloud image possible.
 
-That memory is the module's distinguishing feature. Every five messages,
-`maybe_update_summary` sends recent conversation together with the existing
-summary and asks the model to *evolve* rather than replace it, explicitly
-instructing that newer evidence wins where the two conflict. Failures are caught
-and logged: a summarisation error must never cost the learner their reply.
+**Onboarding** (`onboarding_service`). Ten fixed placement questions across
+tiers 1 to 4. They are fixed rather than generated so placement is consistent
+between learners and costs no LLM call. Per-concept accuracy seeds initial
+mastery, capped at 0.6 because a placement quiz is weak evidence.
 
-### 2.3.3 Knowledge graph
+### 2.3.1 Functional flow
 
-**Files:** `services/knowledge_graph_service.py`,
-`repositories/knowledge_graph_repo.py`, `data/dsa_graph.json`,
-`data/seed_graph.py`
-
-Twenty-five concepts across five tiers with thirty-seven typed edges, seeded
-from JSON. Provides the mastery-overlaid graph the dashboard renders, the
-unlocked set (all prerequisites at or above 0.6), and the next-concept
-recommendation — lowest mastery first, then easiest tier.
-
-Mastery updates blend rather than replace: 70% observed accuracy, 30% prior
-mastery. One unlucky answer therefore cannot erase an established history, while
-a genuine change in performance still moves the score within a few attempts.
-
-### 2.3.4 Chat and tutoring
-
-**Files:** `services/chat_service.py`, `routers/chat_router.py`
-
-Owns session lifecycle and message exchange. Session creation runs the model
-*before* persisting anything, so a generation failure leaves no orphan session
-behind. Long conversations are compacted: past twenty messages the service
-substitutes a generated summary plus the ten most recent turns, holding token
-use roughly constant as a session grows.
-
-### 2.3.5 Quiz and assessment
-
-**Files:** `services/quiz_service.py`, `routers/quiz_router.py`
-
-Generates one multiple-choice question at a time, targeted at the learner's
-recorded weak areas where any exist. Grading is server-side; the answer key,
-hint and explanation are withheld from the client until an attempt is recorded.
-Submission fans out to topic progress, concept mastery, SM-2 rescheduling and
-the engagement log.
-
-### 2.3.6 Spaced repetition
-
-**Files:** `services/spaced_repetition_service.py`, `routers/review_router.py`
-
-Implements SM-2 over quiz outcomes. Detailed in section 2.4.
-
-### 2.3.7 Retrieval-augmented generation
-
-**Files:** `rag/embedder.py`, `rag/indexer.py`, `rag/retriever.py`,
-`rag/content_seeder.py`
-
-The seeder generates beginner, intermediate and advanced explanations for each
-concept and embeds them. At query time the retriever embeds the learner's
-question and returns the nearest chunks, optionally filtered by concept.
-
-The embedder degrades deliberately: if `sentence-transformers` is not
-installed, `is_available()` returns false, the retriever returns an empty list,
-and the prompt builder simply omits the reference block. The tutor continues on
-profile and conversation history alone. This is what makes the slim cloud image
-viable.
-
-### 2.3.8 Onboarding
-
-**Files:** `services/onboarding_service.py`, `routers/onboarding_router.py`
-
-Ten fixed placement questions spanning tiers one to four — fixed rather than
-generated, so placement is consistent between learners and costs no LLM call.
-Each question maps to concepts; per-concept accuracy seeds initial mastery,
-capped at 0.6 because a placement quiz is weak evidence, with confidence set to
-0.2 to record that explicitly.
-
-### 2.3.9 Functional flow
-
-A complete learner journey:
-
-1. **Sign up** → account created, JWT issued
-2. **Onboarding step 1** → preferences saved to the profile
-3. **Onboarding step 2** → placement quiz seeds mastery across the graph
-4. **Dashboard** → concepts by tier, mastery bars, locks on unmet
-   prerequisites, recommended next concept, progress summary
-5. **Start a session** → opening explanation generated, shaped by profile and
-   grounded in retrieved material
-6. **Converse** → each reply personalized; memory revised every five messages
-7. **Take a quiz** → question targets weak areas; grading updates mastery
-8. **Mastery crosses 0.6** → dependent concepts unlock on the dashboard
-9. **SM-2 schedules review** → concept reappears in the review queue when due
-10. **Return later** → tutor recalls prior sessions through accumulated memory
+1. Sign up, account created and token issued
+2. Onboarding step 1, preferences saved
+3. Onboarding step 2, placement quiz seeds mastery
+4. Dashboard shows concepts by tier with mastery, locks and a recommendation
+5. Start a session, opening explanation generated from the profile
+6. Converse, memory updated every five messages
+7. Take a quiz, mastery updates
+8. Mastery passes 0.6 and dependent concepts unlock
+9. SM-2 schedules the concept for review
+10. Return later and the tutor still has the accumulated memory
 
 {{PAGEBREAK}}

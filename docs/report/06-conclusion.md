@@ -2,150 +2,118 @@
 
 ## 6.1 Summary of Implementation
 
-This project delivered a working adaptive tutoring platform for Data Structures
-and Algorithms: a React single-page application over a FastAPI backend, a
-PostgreSQL database with vector search, and a hosted language model.
+We built a working adaptive tutoring platform for Data Structures and
+Algorithms: a React frontend over a FastAPI backend, a PostgreSQL database with
+vector search, and a hosted language model.
 
-The system comprises roughly 9,900 lines across 130 source files — 24 REST
-endpoints, 13 database tables, 3 migrations, 25 concepts with 37 typed
-prerequisite edges, and 133 automated tests behind a five-stage CI pipeline.
+The system is roughly 9,900 lines across 130 files. It has 24 REST endpoints, 13
+tables, 3 migrations, 25 concepts with 37 prerequisite edges, and 133 automated
+tests behind a five-job CI pipeline.
 
-The substance of the work is not the chat interface but the four mechanisms
-behind it. An explicit learner profile is translated into imperative
-instructions in every system prompt. A natural-language memory is revised by the
-model every five messages and carried forward across sessions. Retrieved
-reference material grounds generation through vector similarity search. A
-prerequisite graph tracks per-concept mastery, which in turn gates progression,
-targets questions and drives an SM-2 revision schedule. Each is a durable
-property of the system rather than an instruction appended to a prompt.
+The substance is not the chat interface but the four mechanisms behind it. The
+learner profile is turned into instructions in every system prompt. A
+natural-language memory is updated by the model every five messages and carried
+between sessions. Retrieved reference material grounds the explanations. A
+prerequisite graph tracks mastery, which gates progression, targets questions
+and drives the revision schedule.
 
 ## 6.2 Achievements Against Objectives
 
 | # | Objective | Outcome |
 |---|---|---|
-| O1 | Model the learner explicitly | **Met.** Preferences persisted across five dimensions; mastery derived from performance via a blended estimator, not self-report |
-| O2 | Condition responses on that model | **Met.** Modular prompt assembly injects profile, memory and retrieved material on every generation |
-| O3 | Give the tutor durable memory | **Met.** Summary revised every five messages, merged rather than replaced, carried across sessions and surfaced in the profile page |
-| O4 | Ground generation in reference material | **Met locally, degraded in production.** Full pipeline works with the local embedding model; the free-tier deployment omits it and falls back cleanly. See 6.3 |
-| O5 | Represent the subject as a prerequisite graph | **Met.** 25 concepts, 37 typed edges, 5 tiers, unlocking at 0.6 mastery, lowest-mastery-first recommendation |
-| O6 | Schedule revision on evidence | **Met.** SM-2 with correct ease-factor arithmetic and floor, driven by quiz outcomes, surfaced as a review queue |
-| O7 | Make the adaptation visible | **Met.** Signals snapshotted at generation time and shown per message. Snapshotting rather than recomputing means an old message reflects the profile that actually shaped it |
-| O8 | Engineer it as a deployable system | **Met.** Layered architecture, migrations, 133 tests, CI with SAST and dependency and container scanning, declarative cloud configuration |
+| O1 | Model the learner explicitly | Met. Preferences across five dimensions, mastery derived from actual performance |
+| O2 | Condition responses on that model | Met. Modular prompt assembly on every generation |
+| O3 | Memory across sessions | Met. Updated every five messages, merged rather than replaced |
+| O4 | Ground generation in reference material | Met locally, degraded in production. See 6.3 |
+| O5 | Prerequisite graph | Met. 25 concepts, 37 edges, unlocking at 0.6 mastery |
+| O6 | Evidence-based revision | Met. SM-2 driven by quiz results, with a review queue |
+| O7 | Make adaptation visible | Met. Signals recorded at generation time and shown per message |
+| O8 | Deployable engineering | Met. Layered architecture, migrations, 133 tests, CI with security scanning |
 
-Beyond the stated objectives, a security review during the hardening phase
-identified and closed four broken-access-control defects that would have
-allowed any authenticated learner to read and modify another's data. That work
-is documented in section 3.3.3.
+Beyond the stated objectives, the security review found and fixed four access
+control bugs that would have let any signed-in learner read and modify another
+learner's data. That is covered in section 3.3.3.
 
 ## 6.3 Limitations
 
-Stated plainly, since each bounds what the system can currently claim.
+**RAG is not available in the deployed version.** The embedding model needs
+PyTorch, which pushes the image past the free tier's size limit. The
+architecture handles this cleanly, but it means the deployed system demonstrates
+three of the four personalization mechanisms rather than all four. Paid hosting
+or a hosted embedding API would fix it.
 
-**RAG is unavailable in the deployed instance.** The embedding model requires
-PyTorch, which pushes the image beyond the free tier's size limit. The
-architecture handles this cleanly — the tutor degrades to profile-driven
-personalization without error — but the deployed system demonstrates three of
-the four personalization mechanisms rather than all four. Paid hosting, or
-switching to a hosted embedding API, resolves it.
+**We did not measure effectiveness.** We can show the system is adaptive, in
+that it produces different explanations of the same concept for different
+profiles. Whether that actually improves learning is unknown and would need a
+controlled study over several weeks.
 
-**Effectiveness is unmeasured.** The system is demonstrably *adaptive*: it can
-be shown to produce different explanations of the same concept for different
-profiles. Whether that adaptation improves learning outcomes is unestablished.
-Answering it requires a controlled study with human participants over weeks,
-which is beyond a single-semester submission.
+**Mastery rests on multiple-choice evidence.** A learner can get the right
+answer by elimination, and four options sample a concept narrowly. The mastery
+number is noisier than it looks. The confidence field records how much evidence
+is behind it, but nothing currently uses that.
 
-**Mastery rests on multiple-choice evidence.** A learner can select the right
-option by elimination without understanding, and a four-option question samples
-a concept narrowly. Mastery is therefore a noisier signal than the numeric score
-suggests. The confidence field records evidence volume, but nothing currently
-consumes it.
+**Only one subject.** The schema is subject-agnostic and every query filters on
+subject, but only the DSA graph exists. The claim that adding another subject is
+just data is reasonable but untested.
 
-**A single subject.** The schema is subject-agnostic — `concept_nodes` carries a
-`subject` column and every query filters on it — but only the DSA graph is
-authored. The claim that adding another subject is a data exercise is
-architecturally sound but untested.
-
-**Test coverage is uneven.** Backend statement coverage is 60%; frontend is
-13.7%, with seven route-level components untested. No automated test touches a
-real database, so query correctness and constraint enforcement rest on a
-manually-run smoke suite.
+**Test coverage is uneven.** 60% on the backend, 13.7% on the frontend, and no
+automated test touches a real database.
 
 **No concurrency handling.** `get_or_create_profile` and similar
-read-then-create patterns would race under simultaneous requests for the same
-new user. Single-user usage never exercises this; a class of thirty starting
-at once might.
-
-**Cost and rate limits shape behaviour.** Retrieval is capped at two or three
-chunks and reference text truncated to 500 characters, to stay inside the
-context budget and the free tier. A larger budget would allow richer grounding.
+read-then-create patterns would race if two requests arrived at once for the
+same new user. A single user never hits this; thirty students starting together
+might.
 
 ## 6.4 Future Enhancements
 
-Ordered by the ratio of value to effort, given the existing architecture.
+**Stream the responses.** Replies take two to six seconds, almost all of it
+model latency, and the interface just shows "Tutor is thinking…" for the whole
+time. Groq supports server-sent events and FastAPI supports streaming
+responses. Perceived latency would drop to a few hundred milliseconds. This is
+the biggest available improvement and needs no architectural change.
 
-**Stream responses.** Chat replies take two to six seconds, essentially all of
-it model latency, and the interface shows a static "Tutor is thinking…" for the
-duration. Groq supports server-sent events; FastAPI supports
-`StreamingResponse`. Perceived latency would drop to a few hundred
-milliseconds. This is the single largest available improvement to the
-experience and requires no architectural change.
+**Free-text answers.** The best evidence of understanding is an explanation in
+the learner's own words. Grading that against a model-generated rubric would
+give a much better mastery signal than multiple choice, though the reliability
+of the grading would need work.
 
-**Free-text answers with rubric grading.** The strongest evidence of
-understanding is an explanation in the learner's own words. Asking the learner
-to explain a concept and grading it against a model-generated rubric would give
-a far better mastery signal than multiple choice — at the cost of a
-reliability problem worth studying in its own right.
+**Use the confidence value.** It is calculated and stored and nothing reads it.
+A mastery of 0.8 from two answers should not unlock as much as 0.8 from twenty.
+That is a small change to one condition with a real effect on pacing.
 
-**Consume the confidence signal.** `concept_mastery.confidence` is computed and
-stored and nothing reads it. A mastery of 0.8 from two answers should not gate
-progression as strongly as 0.8 from twenty. Weighting unlock decisions by
-confidence is a small change to one predicate with a real effect on pacing.
+**Add a second subject.** The most direct test of whether the graph model is
+actually general.
 
-**Author a second subject.** The most direct test of the generality claim.
-Operating Systems or Databases would exercise the graph model against a
-differently-shaped prerequisite structure and reveal any DSA-specific
-assumptions.
-
-**Adaptive question difficulty.** Quizzes currently take difficulty from the
-session level. Selecting difficulty per question from current mastery — item
-response theory in its simplest form — would keep the learner nearer the edge of
-their competence, which is where the learning is.
+**Adaptive question difficulty.** Quizzes currently take their difficulty from
+the session level. Choosing per question based on current mastery would keep the
+learner closer to the edge of what they know.
 
 **Learner-facing analytics.** Engagement events are recorded on every
-interaction and only the streak is derived from them. Time-of-day patterns,
-session-length trends and per-concept time investment are all already in the
-table, unqueried.
+interaction and only the streak uses them. Time-of-day patterns and per-concept
+time are already in the table and unqueried.
 
-**Code execution.** A sandboxed judge would let the tutor set implementation
-exercises rather than only conceptual questions. Substantial work — process
-isolation, resource limits, multi-language support — but it is the natural
-completion of a DSA tutor.
-
-**A test database in CI.** A disposable PostgreSQL service container would let
-repository tests run against real SQL and close the largest gap in the current
-validation strategy, at the cost of a slower pipeline.
+**A test database in CI.** A throwaway Postgres service container would let the
+repository tests run against real SQL and close the biggest gap in our testing.
 
 ## 6.5 Concluding Remarks
 
-Bloom's 2 Sigma finding framed one-to-one tutoring as a target rather than a
-curiosity: the challenge is to find scalable methods that approach its results.
-Language models make the generation half of that problem tractable almost
-trivially. This project's contention is that generation is not the hard part.
+Bloom framed one-to-one tutoring as a target to aim for rather than a curiosity.
+Language models make the generation half of that problem almost easy. What this
+project suggests is that generation was never the hard part.
 
-The hard part is everything that makes a tutor's advice *personal*: maintaining
-a model of the learner that survives across sessions, deciding what to teach
-next from what they demonstrably know, grounding explanations so they stay
-accurate, and scheduling revision on evidence rather than on a calendar. Those
-are database, algorithm and architecture problems. The language model is a
-component within them, behind an interface, replaceable.
+The hard part is what makes a tutor's advice personal: keeping a model of the
+learner that survives between sessions, deciding what to teach next from what
+they have actually demonstrated, grounding explanations so they stay accurate,
+and scheduling revision on evidence rather than on a calendar. Those are
+database, algorithm and architecture problems. The language model sits inside
+them as one replaceable component.
 
-The most instructive part of the work was not building the personalization but
-hardening it. A system that produced good explanations and served every
-learner's private conversation to anyone who asked would have looked complete
-in a demonstration. Four such defects existed, and none was found by a scanner —
-CodeQL had nothing to say, because authorisation policy is not inferable from
-source code. They were found by reading the code asking who is permitted to do
-this, which is a question only a person can pose. That is the lesson the project
-would most want to record.
+The most useful part of the work for us was not building the personalization but
+hardening it afterwards. A system that gave good explanations and also served
+every learner's private conversation to anyone who asked would have looked
+finished in a demo. There were four such bugs, and no scanner found any of them.
+CodeQL had nothing to say, because authorisation policy is not something you can
+read off the source. They were found by sitting down and asking who is allowed
+to do this, which is still a question a person has to ask.
 
 {{PAGEBREAK}}
