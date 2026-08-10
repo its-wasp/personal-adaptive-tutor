@@ -14,7 +14,7 @@
 
 | Metric | Value |
 |---|---|
-| Total commits | 59 |
+| Total commits | 61 |
 | Contributors | 3 |
 | Development window | 14 April – 10 August 2026 (18 weeks) |
 | Weeks with at least one commit | 18 of 18 |
@@ -30,7 +30,7 @@
 |---|---|---|---|
 | Suraj | AI/ML Engineer | 18 | LLM integration, RAG pipeline, prompt engineering, chat and quiz services, personalization transparency |
 | Sandip Dey | Platform and Full-stack | 21 | Data model, migrations, knowledge graph, spaced repetition, onboarding, Docker, cloud deployment, dashboard and review interfaces |
-| Udit Nayak | Backend API and QA | 20 | Authentication and security, repositories, routers and DTOs, the entire test suite, CI pipeline, auth and profile interfaces |
+| Udit Nayak | Backend API and QA | 22 | Authentication and security, repositories, routers and DTOs, the entire test suite, CI pipeline, auth and profile interfaces |
 
 Every member contributed to both backend and frontend. The split is by concern
 rather than by layer: each owns the interface that fronts their own backend
