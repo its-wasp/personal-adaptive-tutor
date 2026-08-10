@@ -14,7 +14,7 @@
 
 | Metric | Value |
 |---|---|
-| Total commits | 61 |
+| Total commits | 62 |
 | Contributors | 3 |
 | Development window | 14 April – 10 August 2026 (18 weeks) |
 | Weeks with at least one commit | 18 of 18 |
@@ -30,7 +30,7 @@
 |---|---|---|---|
 | Suraj | AI/ML Engineer | 18 | LLM integration, RAG pipeline, prompt engineering, chat and quiz services, personalization transparency |
 | Sandip Dey | Platform and Full-stack | 21 | Data model, migrations, knowledge graph, spaced repetition, onboarding, Docker, cloud deployment, dashboard and review interfaces |
-| Udit Nayak | Backend API and QA | 22 | Authentication and security, repositories, routers and DTOs, the entire test suite, CI pipeline, auth and profile interfaces |
+| Udit Nayak | Backend API and QA | 23 | Authentication and security, repositories, routers and DTOs, the entire test suite, CI pipeline, auth and profile interfaces |
 
 Every member contributed to both backend and frontend. The split is by concern
 rather than by layer: each owns the interface that fronts their own backend
@@ -59,11 +59,15 @@ ESLint rule was configured from the start but never run in CI.
 
 ### 5.1.5 Commit history screenshot
 
-> **Figure 5.1 — Commit history.** Insert a screenshot of the repository's
-> commit list showing the distribution across the development window.
+![](../screenshots/fig-5.1-commit-history.png)
 
-> **Figure 5.2 — Contributor activity.** Insert the GitHub Insights →
-> Contributors view showing all three members.
+> **Figure 5.1 — Commit history.** Repository commit list, showing the
+> distribution of work across the eighteen-week development window.
+
+![](../screenshots/fig-5.2-contributors.png)
+
+> **Figure 5.2 — Contributor activity.** GitHub Insights contributor view,
+> showing commits attributed to all three members.
 
 ## 5.2 Weekly Progress Summary
 

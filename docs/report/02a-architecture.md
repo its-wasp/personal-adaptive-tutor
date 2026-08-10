@@ -37,6 +37,8 @@ one path and stays provider-agnostic.
 
 ### 2.1.2 High-level architecture
 
+![](../screenshots/fig-2.1-architecture.png)
+
 > **Figure 2.1 — System Architecture.** Source:
 > `docs/diagrams/architecture.mmd`
 
@@ -56,8 +58,12 @@ cooperate on every generated response:
 
 ### 2.1.3 Data flow
 
+![](../screenshots/fig-2.2a-dfd-level-0.png)
+
 > **Figure 2.2a — Data Flow Diagram, Level 0.** Source:
 > `docs/diagrams/dfd-level-0.mmd`
+
+![](../screenshots/fig-2.2b-dfd-level-1.png)
 
 > **Figure 2.2b — Data Flow Diagram, Level 1.** Source:
 > `docs/diagrams/dfd-level-1.mmd`
@@ -77,6 +83,8 @@ a function of every prior session, not just the current one.
 
 ### 2.1.4 Component interaction
 
+![](../screenshots/fig-2.3-component-interaction.png)
+
 > **Figure 2.3 — Component Interaction.** Source:
 > `docs/diagrams/component-interaction.mmd`
 
@@ -95,6 +103,8 @@ across the router and several repositories — means the ordering constraint
 new mastery level) is expressed in one readable place.
 
 ### 2.1.5 Database design
+
+![](../screenshots/fig-2.4-er-model.png)
 
 > **Figure 2.4 — Entity-Relationship Model.** Source:
 > `docs/diagrams/er-model.mmd`
@@ -141,8 +151,12 @@ sufficient.
 Two flows are given as sequence diagrams because their ordering constraints
 matter and are not evident from the static structure.
 
+![](../screenshots/fig-2.5-sequence-chat.png)
+
 > **Figure 2.5 — Sequence, a personalized chat turn.** Source:
 > `docs/diagrams/sequence-chat.mmd`
+
+![](../screenshots/fig-2.6-sequence-quiz-mastery.png)
 
 > **Figure 2.6 — Sequence, quiz submission through mastery and SM-2.** Source:
 > `docs/diagrams/sequence-quiz-mastery.mmd`

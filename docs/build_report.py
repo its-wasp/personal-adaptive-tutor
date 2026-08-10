@@ -31,7 +31,6 @@ from pathlib import Path
 
 try:
     from docx import Document
-    from docx.enum.section import WD_SECTION
     from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
     from docx.oxml import OxmlElement
@@ -111,8 +110,13 @@ def substitute(text: str, subs: dict) -> str:
 
 # ── markdown parsing ────────────────────────────────────────────────────────
 
-FIGURE_RE = re.compile(r"^>\s*\*\*(Figure\s+[\w.]+)\s*[—-]\s*(.+?)\*\*", re.I)
-TABLE_CAPTION_RE = re.compile(r"^\*\*(Table\s+[\w.]+)\s*[—-]\s*(.+?)\*\*\s*$", re.I)
+FIGURE_RE = re.compile(r"^>\s*\*\*(Figure\s+[\w.]+)\s*[—-]\s*(.+?)\*\*", re.IGNORECASE)
+TABLE_CAPTION_RE = re.compile(r"^\*\*(Table\s+[\w.]+)\s*[—-]\s*(.+?)\*\*\s*$", re.IGNORECASE)
+IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$")
+
+# Collected during rendering so the build can report what is still missing
+# rather than silently producing a report full of empty figures.
+MISSING_IMAGES: list[str] = []
 
 
 def parse_blocks(text: str) -> list[dict]:
@@ -152,6 +156,13 @@ def parse_blocks(text: str) -> list[dict]:
                 i += 1
             i += 1
             blocks.append({"type": "code", "lang": lang, "text": "\n".join(body)})
+            continue
+
+        # Standalone image.
+        image = IMAGE_RE.match(stripped)
+        if image:
+            blocks.append({"type": "image", "alt": image.group(1), "path": image.group(2)})
+            i += 1
             continue
 
         # Horizontal rule.
@@ -406,6 +417,40 @@ def add_code_block(doc, text: str) -> None:
     paragraph._p.get_or_add_pPr().append(shading)
 
 
+def add_image(doc, rel_path: str, alt: str) -> None:
+    """
+    Place a figure, scaled to the text column.
+
+    A missing file leaves a visible placeholder rather than aborting the build:
+    the report is written before the screenshots are captured, so a partial
+    build has to stay useful. Every gap is reported at the end of the run.
+    """
+    path = (REPORT_DIR / rel_path).resolve()
+    paragraph = doc.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    def placeholder(reason: str) -> None:
+        MISSING_IMAGES.append(f"{rel_path} ({reason})")
+        run = paragraph.add_run(
+            f"[ {reason} figure: {rel_path}{f' — {alt}' if alt else ''} ]"
+        )
+        run.italic = True
+        run.font.color.rgb = RGBColor(0xB0, 0x30, 0x30)
+
+    if not path.exists():
+        placeholder("missing")
+        return
+
+    try:
+        # 6.0in fits the 8.5in page inside one-inch margins with room to spare.
+        paragraph.add_run().add_picture(str(path), width=Inches(6.0))
+    except Exception as exc:  # noqa: BLE001 - any failure must degrade, not abort
+        # A truncated download or a file that is not really a PNG must not take
+        # the whole build down — one bad screenshot would otherwise cost the
+        # entire report.
+        placeholder(f"unreadable: {type(exc).__name__}")
+
+
 def add_table(doc, rows: list[list[str]]) -> None:
     if not rows:
         return
@@ -454,6 +499,9 @@ def render_block(doc, block: dict) -> None:
 
     elif kind == "heading":
         doc.add_heading(block["text"], level=min(block["level"], 4))
+
+    elif kind == "image":
+        add_image(doc, block["path"], block["alt"])
 
     elif kind == "caption":
         add_seq_caption(doc, block["kind"], block["label"], block["title"])
@@ -537,6 +585,12 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     doc.save(args.output)
+
+    if MISSING_IMAGES:
+        print(f"\n{len(MISSING_IMAGES)} figure(s) not yet captured — placeholders inserted:")
+        for path in MISSING_IMAGES:
+            print(f"  - {path}")
+        print("  See docs/screenshots/SCREENSHOT-CHECKLIST.md")
 
     print(f"\nWrote {args.output} ({total_blocks} blocks from {len(chapters)} chapters)")
     print("\nIn Word: Ctrl+A then F9 to populate the contents and figure lists,")

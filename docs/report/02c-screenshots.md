@@ -5,34 +5,54 @@
 Capture instructions and filenames are in
 `docs/screenshots/SCREENSHOT-CHECKLIST.md`.
 
+![](../screenshots/fig-2.7-onboarding-preferences.png)
+
 > **Figure 2.7 — Onboarding, preference selection.** The four settings that
 > shape every subsequent explanation.
 
+![](../screenshots/fig-2.8-onboarding-placement.png)
+
 > **Figure 2.8 — Onboarding, placement quiz.** Ten questions spanning tiers
 > one to four, seeding initial mastery across the graph.
+
+![](../screenshots/fig-2.9-dashboard.png)
 
 > **Figure 2.9 — Dashboard.** Twenty-five concepts in five tiers, with mastery
 > bars, prerequisite chips, padlocks on locked concepts, the recommendation
 > card and the progress summary.
 
+![](../screenshots/fig-2.10-concept-detail.png)
+
 > **Figure 2.10 — Concept detail panel.** Mastery, prerequisites, estimated
 > time and the level selector for starting a session.
+
+![](../screenshots/fig-2.11-chat-session.png)
 
 > **Figure 2.11 — Tutoring session.** A personalized explanation with
 > markdown formatting and syntax-highlighted code.
 
+![](../screenshots/fig-2.12-why-this-response.png)
+
 > **Figure 2.12 — "Why this response", expanded.** The personalization
 > signals that shaped the message above it.
+
+![](../screenshots/fig-2.13-quiz-answered.png)
 
 > **Figure 2.13 — Inline quiz, after submission.** The correct option
 > highlighted, the learner's incorrect choice marked, explanation and hint
 > revealed.
 
+![](../screenshots/fig-2.14-review-queue.png)
+
 > **Figure 2.14 — Review queue.** Concepts due under the SM-2 schedule, with
 > mastery, interval and days overdue.
 
+![](../screenshots/fig-2.15-profile.png)
+
 > **Figure 2.15 — Profile.** Editable preferences alongside the accumulated
 > tutor memory.
+
+![](../screenshots/fig-2.16-personalization-comparison.png)
 
 > **Figure 2.16 — Personalization comparison.** The same concept explained to
 > an example-first learner and a theory-first learner, side by side. This is
