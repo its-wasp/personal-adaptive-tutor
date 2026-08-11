@@ -55,7 +55,7 @@ Personalized tutoring produces significantly better outcomes than one-size-fits-
 - **FastAPI** (Python) — async REST API
 - **PostgreSQL 15** (pgvector) — relational storage + vector similarity search
 - **SQLAlchemy + Alembic** — ORM + migrations
-- **Groq** (LLaMA 3.1 8B) — LLM provider with JSON mode and structured output
+- **Groq** (`openai/gpt-oss-20b`) — LLM provider with JSON mode and structured output
 - **sentence-transformers** (all-MiniLM-L6-v2) — local embeddings for RAG (384-dim vectors)
 - **SearXNG** — meta-search for reference material
 

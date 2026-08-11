@@ -49,7 +49,7 @@ Retrieval-augmented generation grounds explanations in reference material stored
 as vectors using pgvector. A knowledge graph of 25 DSA concepts tracks
 per-concept mastery, which controls prerequisite unlocking, targets quiz
 questions at weak areas, and drives an SM-2 spaced repetition schedule. Text
-generation uses Groq's llama-3.1-8b-instant behind a provider interface.
+generation uses Groq's openai/gpt-oss-20b behind a provider interface.
 
 One feature we think is unusual: every tutor reply stores a record of which
 profile signals shaped it, shown in the interface as an expandable "Why this

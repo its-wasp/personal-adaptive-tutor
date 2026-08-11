@@ -13,7 +13,7 @@ only just cloned the repository.
 | Frontend | Vite dev server, port 5173 | Vercel static hosting + CDN |
 | Search | SearXNG container | Not deployed — `/references` degrades |
 | RAG embedding | Enabled (`sentence-transformers`) | Disabled (slim image) |
-| LLM | Groq API (`llama-3.1-8b-instant`) | Same |
+| LLM | Groq API (`openai/gpt-oss-20b`) | Same |
 
 The two differences worth understanding before deploying are in §5.
 
@@ -181,7 +181,7 @@ confirm pgvector is offered before deploying, or the migration will fail on the
 | `POSTGRES_DB` / `_USER` / `_PASSWORD` / `_HOST` / `_PORT` | Local | Backend, db | Compose defaults are fine |
 | `CORS_ORIGINS` | Cloud | Backend | Comma-separated; localhost always allowed |
 | `AUTO_MIGRATE` | No | Entrypoint | Defaults to `1`; `0` skips migrate and seed |
-| `GROQ_MODEL` | No | Backend | Defaults to `llama-3.1-8b-instant` |
+| `GROQ_MODEL` | No | Backend | Defaults to `openai/gpt-oss-20b` |
 | `LLM_PROVIDER` | No | Backend | Only `groq` is implemented |
 | `SEARXNG_URL` | No | Backend | Empty disables `/references` |
 | `VITE_API_URL` | Yes | Frontend | Build-time; redeploy after changing |

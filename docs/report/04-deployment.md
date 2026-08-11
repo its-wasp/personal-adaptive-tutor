@@ -14,7 +14,7 @@ procedures.
 | Database | `pgvector/pgvector:pg15`, port 5432 |
 | Search | `searxng/searxng:latest`, port 8080 |
 | Frontend | Vite dev server, Node 18+, port 5173 |
-| LLM | Groq API, `llama-3.1-8b-instant` |
+| LLM | Groq API, `openai/gpt-oss-20b` |
 | Embeddings | `all-MiniLM-L6-v2`, running locally on CPU |
 
 Three containers under one `docker-compose.yaml`. The frontend runs on the host
