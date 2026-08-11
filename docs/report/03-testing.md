@@ -9,7 +9,7 @@ endpoint tests, and one end-to-end suite run against a live stack.
 
 | Level | Count | Runtime | What it checks |
 |---|---|---|---|
-| Backend unit | 81 | ~2 s | Algorithms, guards and parsing in isolation |
+| Backend unit | 87 | ~2 s | Algorithms, guards and parsing in isolation |
 | Frontend unit and component | 52 | ~2.5 s | Hooks and rendered components |
 | End-to-end smoke | 40 assertions | ~60 s | Every endpoint against a running system |
 | Static and supply chain | 4 CI jobs | ~3 min | Lint, SAST, dependency and container CVEs |
@@ -73,7 +73,7 @@ block unrelated work.
 
 ## 3.2 Test Cases
 
-A representative selection. All 133 automated tests pass.
+A representative selection. All 139 automated tests pass.
 
 | ID | Description | Input | Expected Output | Status |
 |---|---|---|---|---|
@@ -103,6 +103,8 @@ A representative selection. All 133 automated tests pass.
 | TC-24 | Yesterday still counts | Active −1, −2, −3 | 3 | Pass |
 | TC-25 | Fenced JSON recovered | ```` ```json … ``` ```` with prose | Parsed dictionary | Pass |
 | TC-26 | Unescaped newlines recovered | Literal newline in a string value | Both fields recovered | Pass |
+| TC-26a | Escape sequences decoded, not passed through | Raw newline beside escaped ones | No literal backslash-n in output | Pass |
+| TC-26b | Code fences survive recovery | Explanation containing a python fence | Fence markers intact | Pass |
 | TC-27 | Empty required field rejected | `{"title":"T","explanation":""}` | `ValueError` | Pass |
 | TC-28 | Malformed output triggers one retry | Bad, then good | Two calls, parsed result | Pass |
 | TC-29 | Provider rejection has nothing to replay | `ValueError`, then good | Retry has no assistant turn | Pass |
@@ -133,11 +135,11 @@ A representative selection. All 133 automated tests pass.
 
 | Suite | Tests | Passed | Failed | Runtime |
 |---|---|---|---|---|
-| Backend (pytest) | 81 | 81 | 0 | 2.11 s |
+| Backend (pytest) | 87 | 87 | 0 | 1.90 s |
 | Frontend (Vitest) | 52 | 52 | 0 | 2.52 s |
-| **Total** | **133** | **133** | **0** | **~4.6 s** |
+| **Total** | **139** | **139** | **0** | **~4.4 s** |
 
-The suite grew from 44 tests to 133 during the hardening phase. The frontend had
+The suite grew from 44 tests to 139 during the hardening phase. The frontend had
 no test tooling at all before that.
 
 The smoke test was run against the live stack on a fresh database: 40
@@ -170,7 +172,7 @@ are at zero. That gap is the main weakness in our testing and is listed in
 
 ### 3.3.3 Defects found and fixed
 
-Eleven defects were found during the hardening phase. Four were the same class
+Twelve defects were found during the hardening phase. Four were the same class
 of security bug.
 
 | # | Defect | Severity | Found by | Fix |
@@ -186,6 +188,7 @@ of security bug.
 | D9 | N+1 query building the personalization context | Medium | Code review | Batched into one query |
 | D10 | N+1 query resolving prerequisites | Medium | Code review | Single edge query |
 | D11 | `streak_days` never written | Low | Code review | Derived from engagement events |
+| D12 | Malformed-JSON recovery returned escape sequences verbatim, so opening explanations rendered as one unbroken line | Medium | Manual use after the model change | Repair the input and parse it, instead of rebuilding the object by hand |
 
 **D1 to D4** are all broken access control, which is A01 in the OWASP Top 10
 [3]. Each endpoint authenticated correctly and then failed to authorise. It
