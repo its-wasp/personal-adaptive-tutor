@@ -6,9 +6,9 @@
 
 | Metric | Value |
 |---|---|
-| Total commits | 63 |
+| Total commits | 65 |
 | Contributors | 3 |
-| Development window | 14 April – 10 August 2026 (18 weeks) |
+| Development window | 14 April – 11 August 2026 (18 weeks) |
 | Weeks with at least one commit | 18 of 18 |
 | Lines of application code | ~9,900 |
 | Backend endpoints | 24 |
@@ -20,9 +20,9 @@
 
 | Member | Role | Commits | Main areas |
 |---|---|---|---|
-| Suraj | AI/ML | 18 | LLM integration, RAG pipeline, prompt engineering, chat and quiz services, personalization transparency |
+| Suraj | AI/ML | 19 | LLM integration, RAG pipeline, prompt engineering, chat and quiz services, personalization transparency |
 | Sandip Dey | Platform and full-stack | 21 | Data model, migrations, knowledge graph, spaced repetition, onboarding, Docker, deployment, dashboard and review pages |
-| Udit Nayak | Backend API and QA | 24 | Authentication and security, repositories, routers, DTOs, the test suite, CI pipeline, auth and profile pages |
+| Udit Nayak | Backend API and QA | 25 | Authentication and security, repositories, routers, DTOs, the test suite, CI pipeline, auth and profile pages |
 
 All three of us worked on both backend and frontend. We split by concern rather
 than by layer, so each person owned the interface for their own backend work.
@@ -72,7 +72,7 @@ enabled from the start but never run in CI.
 | 15 | 20–26 Jul | Pipeline and deployment | Frontend lint and tests in CI; production image; Render blueprint; Vercel config | |
 | 16 | 27 Jul – 2 Aug | Diagrams and runbook | Deployment runbook; architecture, DFD, ER and sequence diagrams | |
 | 17 | 3–9 Aug | Report chapters 1–5 | Front matter, introduction, implementation, algorithms, testing, deployment | |
-| 18 | 10 Aug | Report completion | Conclusion, references, appendices, report generator, screenshot guide | |
+| 18 | 10–11 Aug | Report completion | Conclusion, references, appendices, report generator, screenshot guide; migrated to a current Groq model after the previous one was retired upstream | |
 
 Weeks 1 to 9 were feature building and weeks 10 to 18 were hardening, testing
 and documentation. The second phase added almost no new user-facing features.
