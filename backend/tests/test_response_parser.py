@@ -70,3 +70,52 @@ class TestParseQuizResponse:
         raw = '{"question": "Q?", "options": {"A": "a", "B": "b"}}'
         with pytest.raises(ValueError):
             parse_quiz_response(raw)
+
+
+class TestRawControlCharacterRepair:
+    """
+    Regression tests for explanations arriving with literal backslash-n.
+
+    A model writing a multi-line code sample inside an "explanation" string can
+    emit a real newline, which makes the payload invalid JSON. The recovery path
+    used to hand back the raw substring without decoding escape sequences, so
+    every correctly-escaped \\n in the same string reached the UI as two literal
+    characters and the markdown rendered as one long line.
+    """
+
+    RAW_NEWLINE = (
+        '{"title": "Binary Search", "explanation": "Fast.\\n\\n'
+        "## Example\\n```python\\narr=[1,3,5]\\n```\\n"
+        '\nOops, a raw newline above.\\n\\nDone!"}'
+    )
+
+    def test_recovers_from_a_raw_newline(self):
+        result = _extract_json(self.RAW_NEWLINE)
+        assert result["title"] == "Binary Search"
+
+    def test_escape_sequences_are_decoded_not_passed_through(self):
+        explanation = _extract_json(self.RAW_NEWLINE)["explanation"]
+        assert "\\n" not in explanation, "escape sequences reached the UI verbatim"
+        assert "\n" in explanation
+
+    def test_markdown_fences_survive_recovery(self):
+        explanation = _extract_json(self.RAW_NEWLINE)["explanation"]
+        assert "```python" in explanation
+
+    def test_raw_tab_is_repaired(self):
+        raw = '{"title": "T", "explanation": "col1\tcol2\\nnext"}'
+        assert "\t" in _extract_json(raw)["explanation"]
+
+    def test_clean_json_is_untouched(self):
+        raw = '{"title": "T", "explanation": "one\\ntwo\\n\\n```python\\nx=1\\n```"}'
+        explanation = _extract_json(raw)["explanation"]
+        assert "\\n" not in explanation
+        assert explanation.count("\n") == 5
+
+    def test_inner_fence_does_not_derail_a_fenced_response(self):
+        raw = (
+            "Here you go:\n```json\n"
+            '{"title": "T", "explanation": "see\\n```python\\nx=1\\n```\\ndone"}'
+            "\n```"
+        )
+        assert _extract_json(raw)["title"] == "T"

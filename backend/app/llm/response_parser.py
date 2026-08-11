@@ -36,14 +36,66 @@ def _extract_json(raw: str) -> dict:
         if result:
             return result
 
-        # Strategy 4: LLMs often produce JSON with unescaped newlines in strings.
-        # Try to extract key-value pairs manually for known structures.
+        # Strategy 4: repair raw control characters inside string values, then
+        # parse normally. This is the common failure — a model writing a
+        # multi-line code sample emits a real newline mid-string, which is
+        # invalid JSON but trivially fixable.
+        result = _try_parse(_escape_raw_control_chars(block))
+        if result:
+            return result
+
+        # Strategy 5: last resort, pull the key/value pairs out by hand.
         result = _extract_json_with_unescaped_newlines(block)
         if result:
             return result
 
     # All strategies failed
     raise ValueError(f"Could not extract valid JSON from LLM response: {raw[:500]}")
+
+
+def _escape_raw_control_chars(block: str) -> str:
+    """
+    Escape control characters that appear raw inside JSON string values.
+
+    A model writing a multi-line code sample inside an "explanation" string
+    emits a literal newline, which json.loads rejects. Escaping those in place
+    keeps everything else — crucially the escape sequences the model got right
+    — intact, so the result decodes through the normal parser rather than being
+    reconstructed by hand.
+
+    Walks character by character tracking string state, because a regex cannot
+    tell a newline inside a string from one between fields.
+    """
+    ESCAPES = {"\n": "\\n", "\r": "\\r", "\t": "\\t", "\b": "\\b", "\f": "\\f"}
+
+    out = []
+    in_string = False
+    escaped = False
+
+    for ch in block:
+        if escaped:
+            # Previous character was a backslash, so this one is part of an
+            # escape sequence the model already wrote correctly. Leave it.
+            out.append(ch)
+            escaped = False
+            continue
+        if ch == "\\":
+            out.append(ch)
+            escaped = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            out.append(ch)
+            continue
+        if in_string and ch in ESCAPES:
+            out.append(ESCAPES[ch])
+            continue
+        if in_string and ord(ch) < 0x20:
+            out.append(f"\\u{ord(ch):04x}")
+            continue
+        out.append(ch)
+
+    return "".join(out)
 
 
 def _extract_json_with_unescaped_newlines(block: str) -> dict | None:
