@@ -135,13 +135,35 @@ coherent.
 The instruction not to mention the summary is there because without it the model
 opens replies by reciting what it remembers, which reads oddly.
 
-### 2.4.5 Recovering structured output
+### 2.4.5 Getting structured output back
 
-Source: `llm/response_parser.py`, `llm/structured.py`
+Source: `llm/prompt_builder.py`, `llm/response_parser.py`, `llm/structured.py`
 
-Models asked for JSON usually return something close to JSON: wrapped in
-markdown fences, prefixed with a sentence, or with literal newlines inside
-string values. Recovery happens at two levels.
+Two different shapes are needed from the model, and they turned out to need
+different treatment.
+
+A **quiz** is small and flat: a question, four options, a correct letter, a
+points value. JSON mode handles that reliably; it measured four successes out
+of four in testing.
+
+An **explanation** is long markdown with headings, lists and fenced code.
+Putting that inside a JSON string means escaping every newline, and models are
+unreliable at it. Only one generation in three survived Groq's server-side JSON
+validator, so almost every request fell through to the retry, and a model told
+its previous answer was invalid JSON tends to over-correct by escaping the
+escape. The result parsed cleanly and rendered as one unbroken paragraph. A
+larger model was no better, so the problem is the format rather than the model.
+
+Explanations therefore use a delimited reply that needs no escaping at all:
+
+```
+TITLE: a short title
+---
+the markdown explanation
+```
+
+The parser reads that first and falls back to JSON, so both shapes work. For
+the JSON path, recovery still happens at two levels.
 
 Extraction tries four strategies in order:
 

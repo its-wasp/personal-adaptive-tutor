@@ -9,7 +9,7 @@ endpoint tests, and one end-to-end suite run against a live stack.
 
 | Level | Count | Runtime | What it checks |
 |---|---|---|---|
-| Backend unit | 87 | ~2 s | Algorithms, guards and parsing in isolation |
+| Backend unit | 95 | ~2 s | Algorithms, guards and parsing in isolation |
 | Frontend unit and component | 52 | ~2.5 s | Hooks and rendered components |
 | End-to-end smoke | 40 assertions | ~60 s | Every endpoint against a running system |
 | Static and supply chain | 4 CI jobs | ~3 min | Lint, SAST, dependency and container CVEs |
@@ -73,7 +73,7 @@ block unrelated work.
 
 ## 3.2 Test Cases
 
-A representative selection. All 139 automated tests pass.
+A representative selection. All 147 automated tests pass.
 
 | ID | Description | Input | Expected Output | Status |
 |---|---|---|---|---|
@@ -135,11 +135,11 @@ A representative selection. All 139 automated tests pass.
 
 | Suite | Tests | Passed | Failed | Runtime |
 |---|---|---|---|---|
-| Backend (pytest) | 87 | 87 | 0 | 1.90 s |
+| Backend (pytest) | 95 | 95 | 0 | 2.25 s |
 | Frontend (Vitest) | 52 | 52 | 0 | 2.52 s |
-| **Total** | **139** | **139** | **0** | **~4.4 s** |
+| **Total** | **147** | **147** | **0** | **~4.8 s** |
 
-The suite grew from 44 tests to 139 during the hardening phase. The frontend had
+The suite grew from 44 tests to 147 during the hardening phase. The frontend had
 no test tooling at all before that.
 
 The smoke test was run against the live stack on a fresh database: 40
@@ -172,7 +172,7 @@ are at zero. That gap is the main weakness in our testing and is listed in
 
 ### 3.3.3 Defects found and fixed
 
-Twelve defects were found during the hardening phase. Four were the same class
+Thirteen defects were found during the hardening phase. Four were the same class
 of security bug.
 
 | # | Defect | Severity | Found by | Fix |
@@ -189,6 +189,7 @@ of security bug.
 | D10 | N+1 query resolving prerequisites | Medium | Code review | Single edge query |
 | D11 | `streak_days` never written | Low | Code review | Derived from engagement events |
 | D12 | Malformed-JSON recovery returned escape sequences verbatim, so opening explanations rendered as one unbroken line | Medium | Manual use after the model change | Repair the input and parse it, instead of rebuilding the object by hand |
+| D13 | Only one explanation in three survived the JSON validator, so most requests hit the retry, which over-escaped the newlines | High | Sampling generation after D12 recurred | Explanations moved to a delimited format needing no escaping; quizzes stay on JSON |
 
 **D1 to D4** are all broken access control, which is A01 in the OWASP Top 10
 [3]. Each endpoint authenticated correctly and then failed to authorise. It
