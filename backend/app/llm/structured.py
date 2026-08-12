@@ -18,6 +18,7 @@ def generate_structured(
     failure_message: str,
     temperature: float = 0.7,
     retry_temperature: float = 0.2,
+    json_mode: bool = True,
 ) -> dict:
     """
     Generate JSON and parse it, retrying once on malformed output.
@@ -33,7 +34,9 @@ def generate_structured(
     raw = None
     first_err: Exception | None = None
     try:
-        raw = llm.generate(messages=messages, temperature=temperature, json_mode=True)
+        raw = llm.generate(
+            messages=messages, temperature=temperature, json_mode=json_mode
+        )
         return parse(raw)
     except ValueError as e:
         first_err = e
@@ -47,7 +50,7 @@ def generate_structured(
 
     try:
         raw_retry = llm.generate(
-            messages=retry_messages, temperature=retry_temperature, json_mode=True
+            messages=retry_messages, temperature=retry_temperature, json_mode=json_mode
         )
         return parse(raw_retry)
     except ValueError:

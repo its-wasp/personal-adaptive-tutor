@@ -36,7 +36,38 @@ class TestExtractJson:
 
 
 class TestParseExplanationResponse:
-    def test_valid(self):
+    """
+    The explanation prompt asks for a delimited plain-text reply rather than
+    JSON, because long markdown inside a JSON string has to be escaped and
+    models are unreliable at it. JSON is still accepted as a fallback.
+    """
+
+    DELIMITED = "TITLE: Binary Search Basics\n---\n# Binary Search\n\nHalve the range each step."
+
+    def test_delimited_format(self):
+        result = parse_explanation_response(self.DELIMITED)
+        assert result["title"] == "Binary Search Basics"
+        assert result["explanation"].startswith("# Binary Search")
+
+    def test_delimited_keeps_markdown_intact(self):
+        raw = 'TITLE: T\n---\n## Heading\n\n```python\nx = 1\n```\n\n- bullet'
+        explanation = parse_explanation_response(raw)["explanation"]
+        assert "```python" in explanation
+        assert explanation.count("\n") >= 4
+
+    def test_separator_is_optional(self):
+        result = parse_explanation_response("TITLE: T\nJust the body.")
+        assert result["title"] == "T"
+        assert result["explanation"] == "Just the body."
+
+    def test_outer_code_fence_is_stripped(self):
+        raw = "```\nTITLE: T\n---\nBody text.\n```"
+        assert parse_explanation_response(raw)["title"] == "T"
+
+    def test_title_is_case_insensitive(self):
+        assert parse_explanation_response("title: T\n---\nBody.")["title"] == "T"
+
+    def test_json_still_accepted_as_fallback(self):
         result = parse_explanation_response('{"title": "T", "explanation": "E"}')
         assert result["title"] == "T"
         assert result["explanation"] == "E"
@@ -49,6 +80,30 @@ class TestParseExplanationResponse:
     def test_missing_field_raises(self):
         with pytest.raises(ValueError):
             parse_explanation_response('{"title": "T", "explanation": ""}')
+
+    def test_body_only_without_title_raises(self):
+        with pytest.raises(ValueError):
+            parse_explanation_response("Just prose, no title line and no JSON.")
+
+
+class TestOverEscapedOutput:
+    """
+    A model told its previous reply was invalid JSON tends to over-correct and
+    escape the escape, so newlines arrive as the two characters backslash-n and
+    the lesson renders as one unbroken paragraph.
+    """
+
+    def test_over_escaped_newlines_are_decoded(self):
+        raw = '{"title": "T", "explanation": "one\\ntwo\\nthree\\nfour"}'
+        explanation = parse_explanation_response(raw)["explanation"]
+        assert "\\n" not in explanation
+        assert explanation.count("\n") == 3
+
+    def test_genuine_content_about_escapes_is_left_alone(self):
+        # Real newlines dominate, so this is not an over-escaped payload.
+        raw = 'TITLE: T\n---\nUse \\n for a newline.\n\nThat is all.'
+        explanation = parse_explanation_response(raw)["explanation"]
+        assert "\\n" in explanation
 
 
 class TestParseQuizResponse:

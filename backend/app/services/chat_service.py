@@ -270,10 +270,12 @@ class ChatService:
             ],
             parse=parse_explanation_response,
             correction=(
-                "Your previous reply wasn't valid JSON. Reply with a single "
-                'JSON object of the form {"title": "...", "explanation": "..."} '
-                "and nothing else — no markdown fences, no commentary."
+                "Your previous reply wasn't in the requested format. Reply with "
+                "a line reading 'TITLE: <short title>', then a line containing "
+                "only three dashes, then the explanation in markdown. No JSON, "
+                "and do not wrap the whole reply in a code fence."
             ),
+            json_mode=False,
             failure_message=(
                 "The tutor returned a response we couldn't parse. This is "
                 "usually a transient LLM quirk — please try again."

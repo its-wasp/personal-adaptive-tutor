@@ -138,24 +138,36 @@ def build_explanation_prompt(
     profile: dict = None,
     retrieved_chunks: list[dict] = None,
 ):
-    """Build the prompt for the initial explanation when creating a chat session."""
-    prompt = f"""Generate a structured JSON response for the topic below.
+    """
+    Build the prompt for the opening explanation of a new session.
+
+    Asks for a delimited plain-text reply rather than JSON. The explanation is
+    long markdown containing headings, lists and fenced code, and embedding that
+    in a JSON string means escaping every newline. Models are unreliable at it:
+    measured against gpt-oss-20b, only one generation in three survived Groq's
+    JSON validator, and the retry that followed tended to over-escape, so the
+    learner saw literal backslash-n instead of line breaks.
+
+    A TITLE line plus a separator needs no escaping at all, so the failure mode
+    disappears rather than being recovered from. The quiz prompt still uses JSON
+    because its payload is small, flat and has no markdown in it.
+    """
+    return f"""Explain the topic below for this learner.
 
 Topic: {topic_name}
 Level: {knowledge_level}
 Additional description: {description or "None"}
 
-Return STRICTLY in JSON format like:
+Reply in exactly this format:
 
-{{
-  "title": "Short 4-6 word chat title",
-  "explanation": "Detailed explanation here using markdown formatting..."
-}}
+TITLE: a short 4-6 word title for this session
+---
+your full explanation here
 
-Do not include extra text outside the JSON.
-Return valid JSON only."""
-
-    return prompt
+Write the TITLE line first, then a line containing only three dashes, then the
+explanation. The explanation is normal markdown — use headings, lists and fenced
+code blocks freely. Do not wrap your reply in JSON and do not put the whole
+reply inside a code fence."""
 
 
 # ── Quiz Prompt ──

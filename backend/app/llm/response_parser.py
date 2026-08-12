@@ -143,17 +143,77 @@ def _extract_json_with_unescaped_newlines(block: str) -> dict | None:
     return result if result else None
 
 
+TITLE_RE = re.compile(r"^[ \t]*TITLE[ \t]*:[ \t]*(.+?)[ \t]*$", re.MULTILINE | re.IGNORECASE)
+SEPARATOR_RE = re.compile(r"^[ \t]*-{3,}[ \t]*$", re.MULTILINE)
+
+
+def _strip_outer_fence(text: str) -> str:
+    """Drop a code fence wrapping the entire reply, if the model added one."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```[a-zA-Z]*\s*\n?", "", stripped)
+        stripped = re.sub(r"\n?\s*```\s*$", "", stripped)
+    return stripped
+
+
+def _parse_delimited_explanation(raw: str) -> dict | None:
+    """
+    Parse the TITLE / --- / body format the explanation prompt asks for.
+
+    Returns None when the shape isn't present, so the caller can fall back to
+    JSON — older sessions and any model that ignores the instruction still work.
+    """
+    text = _strip_outer_fence(raw)
+    title_match = TITLE_RE.search(text)
+    if not title_match:
+        return None
+
+    title = title_match.group(1).strip().strip('"').strip()
+    remainder = text[title_match.end():]
+
+    separator = SEPARATOR_RE.search(remainder)
+    if separator:
+        remainder = remainder[separator.end():]
+
+    explanation = remainder.strip()
+    if not title or not explanation:
+        return None
+    return {"title": title, "explanation": explanation}
+
+
+def _decode_over_escaped(text: str) -> str:
+    """
+    Repair a reply whose newlines arrived as the two characters backslash-n.
+
+    Happens when a model is told its previous output was invalid JSON and
+    over-corrects by escaping the escape. The result parses cleanly but renders
+    as one unbroken paragraph.
+
+    Deliberately conservative: only fires when literal sequences clearly
+    outnumber real newlines, so an explanation that legitimately discusses
+    escape sequences is left alone.
+    """
+    literal = text.count("\\n")
+    if literal < 3 or text.count("\n") >= literal:
+        return text
+    return text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", "\t")
+
+
 def parse_explanation_response(raw_response: str) -> dict:
     """
-    Parse an initial-explanation response and enforce the contract:
-    both `title` and `explanation` must be present and non-empty.
-    Empty fields silently passed through in the past produced sessions
-    where the opening message was blank, so the model hallucinated
-    on the first real user turn.
+    Parse an opening explanation into {title, explanation}.
+
+    Prefers the delimited format the prompt asks for and falls back to JSON.
+    Both title and explanation must be non-empty: blank fields used to produce
+    sessions whose opening message was empty, after which the model invented
+    context on the first real turn.
     """
-    result = _extract_json(raw_response)
+    result = _parse_delimited_explanation(raw_response)
+    if result is None:
+        result = _extract_json(raw_response)
+
     title = (result.get("title") or "").strip()
-    explanation = (result.get("explanation") or "").strip()
+    explanation = _decode_over_escaped((result.get("explanation") or "").strip())
     if not title or not explanation:
         raise ValueError(
             f"Explanation response missing required fields (title/explanation): {result}"
